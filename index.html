@@ -212,11 +212,25 @@
       border-radius: var(--radius) var(--radius) 0 0;
       padding: 24px 20px 40px;
       width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
       animation: slideUp 0.25s ease;
+      max-height: 85vh;
+      overflow-y: auto;
     }
     @keyframes slideUp {
       from { transform: translateY(100%); }
       to   { transform: translateY(0); }
+    }
+
+    /* Day editor: pantalla completa */
+    #dayOverlay { align-items: stretch; }
+    #dayOverlay .modal {
+      max-height: none;
+      min-height: 100dvh;
+      border-radius: 0;
+      padding-top: max(24px, env(safe-area-inset-top));
+      padding-bottom: max(40px, env(safe-area-inset-bottom));
     }
 
     .modal h2 { font-size: 18px; margin-bottom: 16px; }
@@ -286,6 +300,33 @@
       color: var(--text-muted);
     }
 
+    /* ── DAY EDITOR ── */
+    .day-editor-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .day-editor-head h2 {
+      margin-bottom: 0;
+      text-transform: capitalize;
+    }
+    .day-editor-weekday {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: capitalize;
+      background: var(--surface2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .day-editor-weekday.is-today {
+      background: var(--accent);
+      color: #fff;
+    }
+
     /* ── DETAIL SHEET ── */
     #detailOverlay {
       position: fixed;
@@ -347,14 +388,32 @@
       margin-bottom: 20px;
     }
 
+    .detail-desc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
     .detail-desc-label {
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .08em;
       color: var(--text-muted);
-      margin-bottom: 8px;
     }
+
+    .detail-edit-btn {
+      background: var(--surface2);
+      border: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .detail-edit-btn:active { background: var(--accent); color: #fff; }
 
     .detail-desc {
       font-size: 15px;
@@ -370,6 +429,29 @@
       color: var(--text-muted);
       font-style: italic;
       padding-bottom: 32px;
+    }
+
+    .detail-edit-area { display: none; padding-bottom: 32px; }
+    .detail-edit-area.open { display: block; }
+    .detail-edit-area textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--surface2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+      resize: none;
+      height: 90px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .detail-edit-area textarea:focus { border-color: var(--accent); }
+    .detail-edit-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
     }
 
     /* ── CALENDAR ── */
@@ -437,6 +519,13 @@
     }
     .cal-nav:hover { background: var(--accent); }
 
+    .cal-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0 12px 8px;
+    }
+
     .cal-weekdays {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -473,8 +562,11 @@
       color: var(--text-muted);
       background: transparent;
       position: relative;
+      transition: background .15s, transform .1s;
     }
 
+    .cal-day.clickable { cursor: pointer; }
+    .cal-day.clickable:active { transform: scale(0.9); }
     .cal-day.future { opacity: .3; }
     .cal-day.today  { box-shadow: 0 0 0 2px var(--accent); color: var(--text); }
     .cal-day.none   { color: var(--text-muted); opacity: .45; }
@@ -529,6 +621,24 @@
   </div>
 </div>
 
+<!-- DAY EDITOR MODAL -->
+<div class="overlay" id="dayOverlay" onclick="closeDayEditorOnBg(event)">
+  <div class="modal">
+    <div class="day-editor-head">
+      <h2 id="dayEditorTitle"></h2>
+      <span class="day-editor-weekday" id="dayEditorWeekday"></span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="dayProgressFill" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="dayProgressLabel">0 de 0 completados</div>
+    <div class="habit-list" id="dayEditorList" style="margin-top:14px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDayEditor()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- DETAIL SHEET -->
 <div id="detailOverlay">
   <div class="detail-sheet">
@@ -536,8 +646,18 @@
     <div id="detailStatus" class="detail-status"></div>
     <div id="detailName"   class="detail-name"></div>
     <div id="detailStreak" class="detail-streak"></div>
-    <div class="detail-desc-label">Descripcion</div>
+    <div class="detail-desc-row">
+      <div class="detail-desc-label">Descripcion</div>
+      <button class="detail-edit-btn" id="detailEditBtn" onclick="startEditDesc()">Editar</button>
+    </div>
     <div id="detailDesc"></div>
+    <div id="detailEdit" class="detail-edit-area">
+      <textarea id="detailDescInput" maxlength="120" placeholder="Escribe una descripcion..."></textarea>
+      <div class="detail-edit-actions">
+        <button class="btn btn-secondary" onclick="cancelEditDesc()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEditDesc()">Guardar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -550,6 +670,7 @@
       <span class="cal-title" id="calMonthLabel"></span>
       <button class="cal-nav" onclick="nextMonth()">&#8250;</button>
     </div>
+    <div class="cal-hint">Toca cualquier dia pasado para editar tus habitos</div>
     <div class="cal-weekdays">
       <span class="cal-weekday">Lu</span>
       <span class="cal-weekday">Ma</span>
@@ -566,14 +687,42 @@
 <script>
   const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  const TZ = 'Europe/Madrid';
 
+  const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
+
+  // FIX: usa la misma zona horaria que today() para que las rachas no se desfasen de madrugada.
   function dateStr(d) {
-    return d.toISOString().slice(0, 10);
+    return d.toLocaleDateString('sv-SE', { timeZone: TZ });
   }
 
   // ── Storage ──
   let _mem = null;
+
+  const DEFAULT_HABITS = [
+    'Madrugar',
+    'No FAP',
+    'Beber agua',
+    'Comer',
+    'Lavarse los dientes',
+    'Estudiar',
+    'No doomscrolling'
+  ];
+
+  // Siembra los habitos por defecto solo la primera vez (si nunca se uso la app).
+  function seedIfFirstRun() {
+    let raw = null;
+    try { raw = localStorage.getItem('habits'); } catch {}
+    if (raw === null && _mem === null) {
+      const seeded = DEFAULT_HABITS.map((name, k) => ({
+        id: Date.now() + k,
+        name,
+        description: '',
+        history: {}
+      }));
+      save(seeded);
+    }
+  }
 
   function load() {
     try { return JSON.parse(localStorage.getItem('habits') || '[]'); }
@@ -586,10 +735,12 @@
   }
 
   // ── Streak ──
-  function calcStreak(history) {
+  // Calcula la racha terminando en refStr (por defecto hoy).
+  function calcStreak(history, refStr) {
+    refStr = refStr || today();
     let streak = 0;
-    const d = new Date();
-    if (!history[today()]) d.setDate(d.getDate() - 1);
+    const d = new Date(refStr + 'T12:00:00');
+    if (!history[refStr]) d.setDate(d.getDate() - 1);
     while (history[dateStr(d)]) {
       streak++;
       d.setDate(d.getDate() - 1);
@@ -605,7 +756,7 @@
 
     const d = new Date();
     document.getElementById('dateLabel').textContent = d.toLocaleDateString('es', {
-      weekday: 'short', day: 'numeric', month: 'short'
+      weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ
     });
 
     const total = habits.length;
@@ -650,6 +801,19 @@
     if (h.history[t]) { delete h.history[t]; }
     else              { h.history[t] = true; }
     save(habits);
+    render();
+  }
+
+  // Marca/desmarca un habito en una fecha cualquiera (desde el calendario)
+  function toggleOnDate(i, ds) {
+    const habits = load();
+    const h = habits[i];
+    if (!h.history) h.history = {};
+    if (h.history[ds]) { delete h.history[ds]; }
+    else               { h.history[ds] = true; }
+    save(habits);
+    renderDayEditor(ds);
+    renderCalendar();
     render();
   }
 
@@ -710,8 +874,75 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addHabit(); }
   });
 
+  // ── Day Editor (editar habitos de un dia pasado) ──
+  let selectedDate = null;
+
+  function openDayEditor(ds) {
+    selectedDate = ds;
+    closeCalendar();
+    renderDayEditor(ds);
+    document.getElementById('dayOverlay').classList.add('open');
+  }
+
+  function closeDayEditor() {
+    document.getElementById('dayOverlay').classList.remove('open');
+    openCalendarAt(selectedDate);
+  }
+
+  function closeDayEditorOnBg(e) {
+    if (e.target === document.getElementById('dayOverlay')) closeDayEditor();
+  }
+
+  function renderDayEditor(ds) {
+    const habits  = load();
+    const isToday = ds === today();
+
+    // Cabecera: "23 de junio" + dia de la semana
+    const dObj = new Date(ds + 'T12:00:00');
+    document.getElementById('dayEditorTitle').textContent =
+      dObj.toLocaleDateString('es', { day: 'numeric', month: 'long', timeZone: TZ });
+
+    const wkEl = document.getElementById('dayEditorWeekday');
+    wkEl.textContent = isToday
+      ? 'Hoy'
+      : dObj.toLocaleDateString('es', { weekday: 'long', timeZone: TZ });
+    wkEl.className = 'day-editor-weekday' + (isToday ? ' is-today' : '');
+
+    // Barra de progreso del dia
+    const total = habits.length;
+    const done  = habits.filter(h => h.history && h.history[ds]).length;
+    const pct   = total ? Math.round(done / total * 100) : 0;
+    document.getElementById('dayProgressFill').style.width = pct + '%';
+    document.getElementById('dayProgressLabel').textContent = `${done} de ${total} completados`;
+
+    const list = document.getElementById('dayEditorList');
+    if (!total) {
+      list.innerHTML = `<div class="empty"><p>🌱</p><p>No hay habitos</p></div>`;
+      return;
+    }
+
+    list.innerHTML = habits.map((h, i) => {
+      const isDone = h.history && h.history[ds];
+      const streak = calcStreak(h.history || {}, ds);
+      const streakText = streak > 0
+        ? `<span class="streak-fire">🔥</span> ${streak} dia${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}`
+        : 'Sin racha aun';
+      return `
+        <div class="habit-card ${isDone ? 'done' : ''}" onclick="toggleOnDate(${i}, '${ds}')">
+          <button class="check-btn">✓</button>
+          <div class="habit-info">
+            <div class="habit-name">${escHtml(h.name)}</div>
+            <div class="habit-streak">${streakText}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
   // ── Detail Sheet ──
+  let currentDetailIndex = null;
+
   function openDetail(i) {
+    currentDetailIndex = i;
     const habits = load();
     const h = habits[i];
     const t = today();
@@ -727,7 +958,16 @@
       ? `🔥 ${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}`
       : 'Sin racha aún';
 
+    showDescView(h);
+    document.getElementById('detailOverlay').classList.add('open');
+  }
+
+  // Muestra la descripcion en modo lectura
+  function showDescView(h) {
+    document.getElementById('detailEdit').classList.remove('open');
     const descEl = document.getElementById('detailDesc');
+    descEl.style.display = '';
+    document.getElementById('detailEditBtn').style.display = '';
     if (h.description) {
       descEl.className = 'detail-desc';
       descEl.textContent = h.description;
@@ -735,12 +975,41 @@
       descEl.className = 'detail-no-desc';
       descEl.textContent = 'Sin descripción';
     }
+  }
 
-    document.getElementById('detailOverlay').classList.add('open');
+  // Entra en modo edicion
+  function startEditDesc() {
+    if (currentDetailIndex === null) return;
+    const habits = load();
+    const h = habits[currentDetailIndex];
+    document.getElementById('detailDesc').style.display = 'none';
+    document.getElementById('detailEditBtn').style.display = 'none';
+    const ta = document.getElementById('detailDescInput');
+    ta.value = h.description || '';
+    document.getElementById('detailEdit').classList.add('open');
+    setTimeout(() => ta.focus(), 50);
+  }
+
+  // Guarda la descripcion editada
+  function saveEditDesc() {
+    if (currentDetailIndex === null) return;
+    const habits = load();
+    const h = habits[currentDetailIndex];
+    h.description = document.getElementById('detailDescInput').value.trim();
+    save(habits);
+    showDescView(h);
+  }
+
+  // Cancela sin guardar
+  function cancelEditDesc() {
+    if (currentDetailIndex === null) return;
+    const habits = load();
+    showDescView(habits[currentDetailIndex]);
   }
 
   function closeDetail() {
     document.getElementById('detailOverlay').classList.remove('open');
+    currentDetailIndex = null;
   }
 
   document.getElementById('detailOverlay').addEventListener('click', function(e) {
@@ -751,9 +1020,18 @@
   let calYear, calMonth;
 
   function openCalendar() {
-    const now = new Date();
-    calYear  = now.getFullYear();
-    calMonth = now.getMonth();
+    const ymd = today().split('-');
+    calYear  = parseInt(ymd[0]);
+    calMonth = parseInt(ymd[1]) - 1;
+    renderCalendar();
+    document.getElementById('calOverlay').classList.add('open');
+  }
+
+  // Abre el calendario posicionado en el mes de una fecha concreta
+  function openCalendarAt(ds) {
+    const ymd = (ds || today()).split('-');
+    calYear  = parseInt(ymd[0]);
+    calMonth = parseInt(ymd[1]) - 1;
     renderCalendar();
     document.getElementById('calOverlay').classList.add('open');
   }
@@ -809,6 +1087,10 @@
       } else {
         if (ds === todayStr) cell.classList.add('today');
 
+        // Cualquier dia que no sea futuro es editable
+        cell.classList.add('clickable');
+        cell.addEventListener('click', () => openDayEditor(ds));
+
         if (total === 0) {
           cell.classList.add('none');
         } else {
@@ -833,7 +1115,9 @@
     if (e.target === this) closeCalendar();
   });
 
+  seedIfFirstRun();
   render();
 </script>
 </body>
+</html>
 </html>
