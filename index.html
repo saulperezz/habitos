@@ -2,12 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Habitos" />
+  <meta name="apple-mobile-web-app-title" content="Hábitos" />
   <meta name="theme-color" content="#0f0f13" />
-  <title>Habitos</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="iconos/icono-192.png" />
+  <title>Mis Hábitos</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,20 +23,38 @@
       --text: #e8e8f0;
       --text-muted: #6b6b80;
       --done: #22c55e;
+      --danger: #ef4444;
+      --warn: #fb923c;
       --radius: 16px;
+      --tabbar-h: 64px;
     }
+
+    html { -webkit-text-size-adjust: 100%; }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       min-height: 100dvh;
-      padding: 0 0 100px;
+      padding: 0 0 calc(var(--tabbar-h) + 110px + env(safe-area-inset-bottom));
+      overflow-x: hidden;
+    }
+
+    button { font-family: inherit; }
+    [hidden] { display: none !important; }
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     /* ── HEADER ── */
     header {
-      padding: 24px 20px 12px;
+      padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 12px calc(20px + env(safe-area-inset-left));
       position: sticky;
       top: 0;
       background: var(--bg);
@@ -45,20 +66,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
       margin-bottom: 4px;
     }
 
     h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .icon-btn {
+      min-width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:active { background: var(--surface2); }
+
     .date-btn {
       font-size: 13px;
-      color: var(--text-muted);
       text-transform: capitalize;
       background: var(--surface2);
       border: none;
       color: var(--text-muted);
-      padding: 5px 10px;
-      border-radius: 20px;
+      min-height: 44px;
+      padding: 5px 12px;
+      border-radius: 22px;
       cursor: pointer;
       transition: background .15s, color .15s;
     }
@@ -68,7 +107,7 @@
       height: 4px;
       background: var(--surface2);
       border-radius: 99px;
-      margin-top: 14px;
+      margin-top: 10px;
       overflow: hidden;
     }
 
@@ -79,14 +118,35 @@
       transition: width 0.4s ease;
     }
 
-    .progress-label {
-      font-size: 12px;
-      color: var(--text-muted);
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
       margin-top: 6px;
     }
 
+    .progress-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .repaso-btn {
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 22px;
+      border: 1.5px solid var(--accent);
+      background: rgba(124,106,247,.12);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .repaso-btn:active { background: rgba(124,106,247,.3); }
+
     /* ── HABIT LIST ── */
-    main { padding: 16px 16px 0; }
+    main { padding: 16px calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left)); }
 
     .habit-list { display: flex; flex-direction: column; gap: 10px; }
 
@@ -100,6 +160,7 @@
       border: 1.5px solid transparent;
       transition: border-color 0.2s, background 0.2s;
       user-select: none;
+      cursor: pointer;
     }
 
     .habit-card.done {
@@ -108,8 +169,8 @@
     }
 
     .check-btn {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       border: 2px solid var(--text-muted);
       background: transparent;
@@ -139,11 +200,7 @@
       text-overflow: ellipsis;
     }
 
-    .habit-card.done .habit-name {
-      color: var(--text-muted);
-    }
-
-    .habit-card { cursor: pointer; }
+    .habit-card.done .habit-name { color: var(--text-muted); }
 
     .habit-streak {
       font-size: 12px;
@@ -151,7 +208,7 @@
       margin-top: 3px;
     }
 
-    .streak-fire { color: #fb923c; }
+    .streak-fire { color: var(--warn); }
 
     .delete-btn {
       background: transparent;
@@ -159,12 +216,14 @@
       color: var(--text-muted);
       font-size: 18px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 8px;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 10px;
       line-height: 1;
+      flex-shrink: 0;
       transition: color 0.2s, background 0.2s;
     }
-    .delete-btn:active { color: #ef4444; background: #2a1010; }
+    .delete-btn:active { color: var(--danger); background: #2a1010; }
 
     .empty {
       text-align: center;
@@ -177,8 +236,8 @@
     /* ── FAB ── */
     .fab {
       position: fixed;
-      bottom: 28px;
-      right: 20px;
+      bottom: calc(var(--tabbar-h) + 18px + env(safe-area-inset-bottom));
+      right: calc(20px + env(safe-area-inset-right));
       width: 58px;
       height: 58px;
       border-radius: 50%;
@@ -196,7 +255,35 @@
     }
     .fab:active { transform: scale(0.93); }
 
-    /* ── ADD MODAL ── */
+    /* ── TAB BAR ── */
+    .tabbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      background: var(--surface);
+      border-top: 1px solid var(--surface2);
+      padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      z-index: 25;
+    }
+    .tab {
+      flex: 1;
+      min-height: var(--tabbar-h);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+    }
+    .tab .tab-icon { font-size: 20px; line-height: 1; }
+    .tab[aria-selected="true"] { color: var(--accent); }
+
+    /* ── ADD HABIT MODAL ── */
     .overlay {
       display: none;
       position: fixed;
@@ -210,7 +297,7 @@
     .modal {
       background: var(--surface);
       border-radius: var(--radius) var(--radius) 0 0;
-      padding: 24px 20px 40px;
+      padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
       width: 100%;
       animation: slideUp 0.25s ease;
     }
@@ -219,8 +306,9 @@
       to   { transform: translateY(0); }
     }
 
-    .modal h2 { font-size: 18px; margin-bottom: 16px; }
+    .modal h2, .hoja h2 { font-size: 18px; margin-bottom: 16px; }
 
+    .campo,
     .modal input,
     .modal textarea {
       width: 100%;
@@ -233,18 +321,21 @@
       outline: none;
       transition: border-color 0.2s;
       font-family: inherit;
+      color-scheme: dark;
     }
-    .modal textarea {
+    .modal textarea, textarea.campo {
       resize: none;
       height: 76px;
       margin-top: 10px;
-      font-size: 14px;
     }
+    .campo:focus,
     .modal input:focus,
     .modal textarea:focus { border-color: var(--accent); }
+    .campo:disabled { opacity: .45; }
 
+    .campo.error,
     .modal input.error {
-      border-color: #ef4444;
+      border-color: var(--danger);
       animation: shake 0.3s ease;
     }
     @keyframes shake {
@@ -255,7 +346,7 @@
 
     .input-error-msg {
       font-size: 12px;
-      color: #ef4444;
+      color: var(--danger);
       margin-top: 6px;
       min-height: 16px;
     }
@@ -268,7 +359,8 @@
 
     .btn {
       flex: 1;
-      padding: 14px;
+      min-height: 48px;
+      padding: 12px 14px;
       border-radius: 12px;
       font-size: 16px;
       font-weight: 600;
@@ -283,37 +375,46 @@
     }
     .btn-secondary {
       background: var(--surface2);
-      color: var(--text-muted);
+      color: var(--text);
+    }
+    .btn-danger {
+      background: #2a1010;
+      color: #fca5a5;
     }
 
-    /* ── DETAIL SHEET ── */
-    #detailOverlay {
+    /* ── HOJAS INFERIORES (componente común) ── */
+    .hoja-fondo {
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,.55);
       backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       display: flex;
       align-items: flex-end;
       justify-content: center;
       z-index: 100;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .25s;
+      visibility: hidden;
+      transition: opacity .25s, visibility .25s;
     }
-    #detailOverlay.open { opacity: 1; pointer-events: all; }
+    .hoja-fondo.open { opacity: 1; pointer-events: all; visibility: visible; }
 
-    .detail-sheet {
+    .hoja {
       background: var(--surface);
       border-radius: var(--radius) var(--radius) 0 0;
       width: 100%;
       max-width: 480px;
-      padding: 0 24px env(safe-area-inset-bottom);
+      max-height: 88dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0 20px calc(24px + env(safe-area-inset-bottom));
       transform: translateY(40px);
       transition: transform .25s;
     }
-    #detailOverlay.open .detail-sheet { transform: translateY(0); }
+    .hoja-fondo.open .hoja { transform: translateY(0); }
 
-    .detail-handle {
+    .hoja-asa {
       width: 40px;
       height: 4px;
       background: var(--surface2);
@@ -321,6 +422,13 @@
       margin: 12px auto 20px;
     }
 
+    #detailOverlay { z-index: 100; }
+    #calOverlay    { z-index: 200; }
+    #ajustesOverlay, #ofertaOverlay { z-index: 250; }
+    #diaOverlay    { z-index: 300; }
+    #tareaOverlay  { z-index: 400; }
+
+    /* ── DETAIL SHEET ── */
     .detail-status {
       display: inline-flex;
       align-items: center;
@@ -339,6 +447,7 @@
       font-weight: 700;
       color: var(--text);
       margin-bottom: 8px;
+      word-break: break-word;
     }
 
     .detail-streak {
@@ -347,6 +456,7 @@
       margin-bottom: 20px;
     }
 
+    .seccion-titulo,
     .detail-desc-label {
       font-size: 11px;
       font-weight: 600;
@@ -362,50 +472,19 @@
       line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
-      padding-bottom: 32px;
+      padding-bottom: 12px;
     }
 
     .detail-no-desc {
       font-size: 14px;
       color: var(--text-muted);
       font-style: italic;
-      padding-bottom: 32px;
+      padding-bottom: 12px;
     }
 
     /* ── CALENDAR ── */
-    #calOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(4px);
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 200;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .25s;
-    }
-    #calOverlay.open { opacity: 1; pointer-events: all; }
-
-    .cal-sheet {
-      background: var(--surface);
-      border-radius: var(--radius) var(--radius) 0 0;
-      width: 100%;
-      max-width: 480px;
-      padding: 0 0 env(safe-area-inset-bottom);
-      transform: translateY(40px);
-      transition: transform .25s;
-    }
-    #calOverlay.open .cal-sheet { transform: translateY(0); }
-
-    .cal-handle {
-      width: 40px;
-      height: 4px;
-      background: var(--surface2);
-      border-radius: 2px;
-      margin: 12px auto 0;
-    }
+    #calOverlay .hoja { padding-left: 0; padding-right: 0; }
+    #calOverlay .hoja-asa { margin-bottom: 0; }
 
     .cal-header {
       display: flex;
@@ -425,10 +504,10 @@
       background: var(--surface2);
       border: none;
       color: var(--text);
-      width: 34px;
-      height: 34px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -458,11 +537,12 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 3px;
-      padding: 0 12px 28px;
+      padding: 0 12px 20px;
     }
 
     .cal-day {
       aspect-ratio: 1;
+      min-height: 44px;
       border-radius: 8px;
       display: flex;
       flex-direction: column;
@@ -472,12 +552,18 @@
       font-weight: 500;
       color: var(--text-muted);
       background: transparent;
+      border: none;
       position: relative;
+      font-family: inherit;
     }
+    button.cal-day { cursor: pointer; }
+    button.cal-day:active { background: var(--surface2); }
 
-    .cal-day.future { opacity: .3; }
+    .cal-day.future { color: var(--text-muted); }
+    .cal-day.future .cal-day-num { opacity: .55; }
     .cal-day.today  { box-shadow: 0 0 0 2px var(--accent); color: var(--text); }
-    .cal-day.none   { color: var(--text-muted); opacity: .45; }
+    .cal-day.none   { color: var(--text-muted); }
+    .cal-day.none .cal-day-num { opacity: .6; }
     .cal-day.partial {
       background: rgba(124,106,247,.18);
       color: var(--accent);
@@ -494,118 +580,673 @@
       opacity: .85;
       font-weight: 600;
     }
+    .cal-dot {
+      position: absolute;
+      top: 5px;
+      right: 6px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+
+    .cal-leyenda {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 0 20px 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .cal-leyenda span::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .ley-hecho::before   { background: var(--done); }
+    .ley-parcial::before { background: var(--accent); }
+    .ley-tarea::before   { background: var(--warn); }
+
+    /* ── DETALLE DEL DÍA ── */
+    .dia-titulo {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+    .dia-titulo::first-letter { text-transform: uppercase; }
+
+    .dia-seccion { margin-bottom: 22px; }
+
+    .dia-habito {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--surface2);
+      font-size: 15px;
+      word-break: break-word;
+    }
+    .dia-habito:last-child { border-bottom: none; }
+    .dia-marca { width: 22px; text-align: center; flex-shrink: 0; font-weight: 700; }
+    .dia-habito.si .dia-marca { color: var(--done); }
+    .dia-habito.no { color: var(--text-muted); }
+
+    .texto-suave {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 6px 0 10px;
+    }
+
+    /* ── TAREAS ── */
+    .tareas-seccion { margin-bottom: 22px; }
+    .tareas-seccion .seccion-titulo { padding-left: 4px; }
+    .tareas-seccion.vencidas .seccion-titulo { color: var(--danger); }
+
+    .tarea-lista { display: flex; flex-direction: column; gap: 8px; }
+
+    .tarea {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 6px 6px 6px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1.5px solid transparent;
+    }
+    .tarea.vencida { border-color: rgba(239,68,68,.55); background: #1f1216; }
+    .tarea.hecha .tarea-titulo { text-decoration: line-through; color: var(--text-muted); }
+
+    .tarea-check {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tarea-check span {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      border: 2px solid var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: transparent;
+    }
+    .tarea.hecha .tarea-check span { background: var(--done); border-color: var(--done); color: #fff; }
+
+    .tarea-cuerpo {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      border: none;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      padding: 4px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .tarea-titulo {
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tarea-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .tarea.vencida .tarea-meta { color: #fca5a5; }
+
+    details.completadas summary {
+      list-style: none;
+      cursor: pointer;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+    details.completadas summary::-webkit-details-marker { display: none; }
+    details.completadas summary::before { content: '▸ '; margin-right: 4px; }
+    details.completadas[open] summary::before { content: '▾ '; }
+
+    .fila-campos { display: flex; gap: 10px; margin-top: 10px; }
+    .fila-campos > label { flex: 1; min-width: 0; }
+    .etiqueta {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    /* ── AJUSTES ── */
+    .ajuste {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--surface2);
+      font-size: 15px;
+    }
+    .ajuste input[type="time"] { width: auto; min-width: 120px; padding: 10px 12px; }
+
+    .interruptor {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+    .interruptor input {
+      position: absolute;
+      inset: -6px;
+      width: calc(100% + 12px);
+      height: calc(100% + 12px);
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+      z-index: 1;
+    }
+    .interruptor span {
+      position: absolute;
+      inset: 0;
+      border-radius: 99px;
+      background: var(--surface2);
+      transition: background .2s;
+    }
+    .interruptor span::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+    }
+    .interruptor input:checked + span { background: var(--accent); }
+    .interruptor input:checked + span::after { transform: translateX(20px); }
+    .interruptor input:focus-visible + span { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+    .avisos-caja {
+      margin-top: 16px;
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .avisos-caja .btn { width: 100%; margin-top: 12px; }
+    .aviso-error {
+      margin-top: 12px;
+      color: #fca5a5;
+      font-size: 13px;
+    }
+    .aviso-ok { color: var(--done); font-weight: 600; }
+
+    /* ── REPASO (pantalla completa) ── */
+    #repaso {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      padding: calc(16px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+      animation: aparecer .2s ease;
+    }
+    @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+    .repaso-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .repaso-salir {
+      min-height: 44px;
+      padding: 0 12px;
+      border: none;
+      border-radius: 22px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .repaso-contador { font-size: 14px; color: var(--text-muted); font-weight: 600; }
+
+    .repaso-cuerpo {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 480px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .repaso-pregunta {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .repaso-tarjeta {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 28px 22px;
+      text-align: center;
+    }
+    .repaso-nombre {
+      font-size: 26px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+    .repaso-desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .repaso-etiqueta {
+      display: inline-block;
+      margin-bottom: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(34,197,94,.15);
+      color: var(--done);
+    }
+    .repaso-acciones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .repaso-acciones .btn-primary { grid-column: 1 / -1; min-height: 56px; font-size: 17px; }
+
+    .repaso-final { text-align: center; }
+    .repaso-final .grande { font-size: 44px; margin-bottom: 8px; }
+    .repaso-final h2 { font-size: 22px; margin-bottom: 6px; }
+    .repaso-final .resumen { color: var(--text-muted); margin-bottom: 18px; }
+    .repaso-final ul {
+      list-style: none;
+      text-align: left;
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 6px 16px;
+      margin-bottom: 18px;
+      max-height: 40dvh;
+      overflow-y: auto;
+    }
+    .repaso-final li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--surface2);
+      word-break: break-word;
+    }
+    .repaso-final li:last-child { border-bottom: none; }
+    .repaso-final li::before { content: '✓ '; color: var(--done); font-weight: 700; }
+    .repaso-final .modal-actions { flex-direction: column; }
+
+    .barra-repaso {
+      height: 4px;
+      background: var(--surface2);
+      border-radius: 99px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+    .barra-repaso div {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .3s;
+    }
   </style>
 </head>
 <body>
 
 <header>
   <div class="header-top">
-    <h1>Mis Habitos</h1>
-    <button class="date-btn" id="dateLabel" onclick="openCalendar()"></button>
+    <h1 id="tituloVista">Mis Hábitos</h1>
+    <div class="header-actions">
+      <button class="icon-btn" type="button" onclick="abrirAjustes()" aria-label="Ajustes del recordatorio" title="Ajustes del recordatorio">🔔</button>
+      <button class="date-btn" type="button" id="dateLabel" onclick="openCalendar()" aria-label="Abrir calendario"></button>
+    </div>
   </div>
-  <div class="progress-bar">
-    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  <div id="cabeceraHabitos">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label" id="progressLabel">0 de 0 completados</div>
+      <button class="repaso-btn" type="button" id="repasoBtn" onclick="iniciarRepasoManual()">Hacer repaso</button>
+    </div>
   </div>
-  <div class="progress-label" id="progressLabel">0 de 0 completados</div>
 </header>
 
-<main>
+<main id="vistaHabitos">
   <div class="habit-list" id="habitList"></div>
 </main>
 
-<button class="fab" onclick="openModal()">+</button>
+<main id="vistaTareas" hidden>
+  <div id="listaTareas"></div>
+</main>
 
-<!-- ADD HABIT MODAL -->
+<button class="fab" type="button" id="fab" onclick="accionFab()" aria-label="Añadir hábito">+</button>
+
+<nav class="tabbar" role="tablist" aria-label="Secciones">
+  <button class="tab" type="button" role="tab" id="tabHabitos" aria-selected="true" onclick="cambiarPestana('habitos')">
+    <span class="tab-icon" aria-hidden="true">✓</span>Hábitos
+  </button>
+  <button class="tab" type="button" role="tab" id="tabTareas" aria-selected="false" onclick="cambiarPestana('tareas')">
+    <span class="tab-icon" aria-hidden="true">☰</span>Tareas
+  </button>
+</nav>
+
+<!-- MODAL NUEVO HÁBITO -->
 <div class="overlay" id="overlay" onclick="closeModalOnBg(event)">
-  <div class="modal">
-    <h2>Nuevo habito</h2>
-    <input id="habitInput" type="text" placeholder="Nombre del habito" maxlength="40" />
-    <div class="input-error-msg" id="inputError"></div>
-    <textarea id="descInput" placeholder="Descripcion (opcional)" maxlength="120"></textarea>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloNuevoHabito">
+    <h2 id="tituloNuevoHabito">Nuevo hábito</h2>
+    <input id="habitInput" type="text" placeholder="Nombre del hábito" aria-label="Nombre del hábito" maxlength="40" />
+    <div class="input-error-msg" id="inputError" role="alert"></div>
+    <textarea id="descInput" placeholder="Descripción (opcional)" aria-label="Descripción (opcional)" maxlength="120"></textarea>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="addHabit()">Agregar</button>
+      <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" type="button" onclick="addHabit()">Agregar</button>
     </div>
   </div>
 </div>
 
-<!-- DETAIL SHEET -->
-<div id="detailOverlay">
-  <div class="detail-sheet">
-    <div class="detail-handle"></div>
+<!-- DETALLE DE HÁBITO -->
+<div class="hoja-fondo" id="detailOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="detailName">
+    <div class="hoja-asa"></div>
     <div id="detailStatus" class="detail-status"></div>
     <div id="detailName"   class="detail-name"></div>
     <div id="detailStreak" class="detail-streak"></div>
-    <div class="detail-desc-label">Descripcion</div>
+    <div class="detail-desc-label">Descripción</div>
     <div id="detailDesc"></div>
   </div>
 </div>
 
-<!-- CALENDAR MODAL -->
-<div id="calOverlay">
-  <div class="cal-sheet">
-    <div class="cal-handle"></div>
+<!-- CALENDARIO -->
+<div class="hoja-fondo" id="calOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="calMonthLabel">
+    <div class="hoja-asa"></div>
     <div class="cal-header">
-      <button class="cal-nav" onclick="prevMonth()">&#8249;</button>
+      <button class="cal-nav" type="button" onclick="prevMonth()" aria-label="Mes anterior">&#8249;</button>
       <span class="cal-title" id="calMonthLabel"></span>
-      <button class="cal-nav" onclick="nextMonth()">&#8250;</button>
+      <button class="cal-nav" type="button" onclick="nextMonth()" aria-label="Mes siguiente">&#8250;</button>
     </div>
-    <div class="cal-weekdays">
+    <div class="cal-weekdays" aria-hidden="true">
       <span class="cal-weekday">Lu</span>
       <span class="cal-weekday">Ma</span>
       <span class="cal-weekday">Mi</span>
       <span class="cal-weekday">Ju</span>
       <span class="cal-weekday">Vi</span>
-      <span class="cal-weekday">Sa</span>
+      <span class="cal-weekday">Sá</span>
       <span class="cal-weekday">Do</span>
     </div>
     <div class="cal-grid" id="calContent"></div>
+    <div class="cal-leyenda">
+      <span class="ley-hecho">Todos cumplidos</span>
+      <span class="ley-parcial">Algunos cumplidos</span>
+      <span class="ley-tarea">Tareas pendientes</span>
+    </div>
   </div>
 </div>
 
+<!-- DETALLE DEL DÍA -->
+<div class="hoja-fondo" id="diaOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="diaTitulo">
+    <div class="hoja-asa"></div>
+    <div class="dia-titulo" id="diaTitulo"></div>
+    <div id="diaContenido"></div>
+  </div>
+</div>
+
+<!-- FORMULARIO DE TAREA -->
+<div class="hoja-fondo" id="tareaOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="tareaFormTitulo">
+    <div class="hoja-asa"></div>
+    <h2 id="tareaFormTitulo">Nueva tarea</h2>
+    <input class="campo" id="tareaTitulo" type="text" placeholder="Título" aria-label="Título" maxlength="80" />
+    <div class="input-error-msg" id="tareaError" role="alert"></div>
+    <textarea class="campo" id="tareaNota" placeholder="Nota (opcional)" aria-label="Nota (opcional)" maxlength="200"></textarea>
+    <div class="fila-campos">
+      <label><span class="etiqueta">Fecha (opcional)</span>
+        <input class="campo" id="tareaFecha" type="date" onchange="actualizarCampoHora()" />
+      </label>
+      <label><span class="etiqueta">Hora (opcional)</span>
+        <input class="campo" id="tareaHora" type="time" disabled />
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="cerrarHoja('tareaOverlay')">Cancelar</button>
+      <button class="btn btn-primary" type="button" onclick="guardarTareaDesdeForm()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- AJUSTES DEL RECORDATORIO -->
+<div class="hoja-fondo" id="ajustesOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="ajustesTitulo">
+    <div class="hoja-asa"></div>
+    <h2 id="ajustesTitulo">Recordatorio diario</h2>
+    <div class="ajuste">
+      <label for="ajusteActivo">Repaso diario</label>
+      <span class="interruptor">
+        <input type="checkbox" id="ajusteActivo" role="switch" onchange="cambiarRepasoActivo(this.checked)" />
+        <span></span>
+      </span>
+    </div>
+    <div class="ajuste">
+      <label for="ajusteHora">Hora del repaso</label>
+      <input class="campo" type="time" id="ajusteHora" onchange="cambiarHora(this.value)" />
+    </div>
+    <div class="avisos-caja" id="avisosCaja"></div>
+  </div>
+</div>
+
+<!-- OFERTA DE REPASO AL ABRIR -->
+<div class="hoja-fondo" id="ofertaOverlay">
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="ofertaTitulo">
+    <div class="hoja-asa"></div>
+    <h2 id="ofertaTitulo">Es hora del repaso de hoy</h2>
+    <p class="texto-suave" style="font-style:normal">Te preguntaremos por tus hábitos uno por uno.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="cerrarHoja('ofertaOverlay')">Ahora no</button>
+      <button class="btn btn-primary" type="button" onclick="cerrarHoja('ofertaOverlay'); iniciarRepasoManual()">Empezar</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPASO -->
+<div id="repaso" hidden role="dialog" aria-modal="true" aria-label="Repaso de hábitos"></div>
+
 <script>
+  // ── Configuración ──
+  // URL del worker de avisos desplegado (ver notificaciones/LEEME.md). Vacía = avisos sin configurar.
+  const URL_AVISOS = '';
+  const ZONA = 'Europe/Madrid';
+  const HORA_CORTE_MADRUGADA = '04:00';
+
   const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  // ── Fechas (una sola clave de fecha: AAAA-MM-DD en Europe/Madrid) ──
+  function claveFecha(fecha = new Date()) {
+    return fecha.toLocaleDateString('sv-SE', { timeZone: ZONA });
+  }
+  const today = () => claveFecha();
 
-  function dateStr(d) {
-    return d.toISOString().slice(0, 10);
+  function horaLocal(fecha = new Date()) {
+    return fecha.toLocaleTimeString('es-ES', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   }
 
-  // ── Storage ──
-  let _mem = null;
+  function sumarDias(clave, n) {
+    const [y, m, d] = clave.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+  }
+
+  function fechaDeClave(clave) {
+    const [y, m, d] = clave.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12));
+  }
+
+  function fechaLarga(clave) {
+    return fechaDeClave(clave).toLocaleDateString('es-ES', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  function fechaCorta(clave) {
+    return fechaDeClave(clave)
+      .toLocaleDateString('es-ES', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })
+      .replace(/[.,]/g, '');
+  }
+
+  // ── Almacenamiento ──
+  // Copia en memoria: solo se usa si localStorage no está disponible o falló al escribir esa clave.
+  const _mem = {};
+  const _soloMemoria = new Set();
+
+  function leerJSON(clave, porDefecto) {
+    if (!_soloMemoria.has(clave)) {
+      try {
+        const v = localStorage.getItem(clave);
+        return v === null ? porDefecto : JSON.parse(v);
+      } catch {}
+    }
+    return clave in _mem ? JSON.parse(JSON.stringify(_mem[clave])) : porDefecto;
+  }
+
+  function guardarJSON(clave, valor) {
+    _mem[clave] = valor;
+    try {
+      localStorage.setItem(clave, JSON.stringify(valor));
+      _soloMemoria.delete(clave);
+    } catch {
+      _soloMemoria.add(clave);
+    }
+  }
 
   function load() {
-    try { return JSON.parse(localStorage.getItem('habits') || '[]'); }
-    catch { return _mem || []; }
+    const h = leerJSON('habits', []);
+    return Array.isArray(h) ? h : [];
+  }
+  function save(habits) { guardarJSON('habits', habits); }
+
+  function configPorDefecto() {
+    return { version: 1, repasoActivo: true, hora: '22:00', zonaHoraria: ZONA, avisos: 'no-solicitado', endpointRegistrado: null };
+  }
+  function leerConfig() { return { ...configPorDefecto(), ...(leerJSON('habitos_config', {}) || {}) }; }
+  function guardarConfig(cfg) { guardarJSON('habitos_config', cfg); }
+
+  function leerTareas() {
+    const t = leerJSON('habitos_tareas', []);
+    return Array.isArray(t) ? t : [];
+  }
+  function guardarTareas(tareas) { guardarJSON('habitos_tareas', tareas); }
+
+  function leerRepaso() { return leerJSON('habitos_repaso', null); }
+  function guardarRepaso(r) { guardarJSON('habitos_repaso', r); }
+
+  // Migración v1 → v2: nunca reescribe ni borra «habits».
+  function migrar() {
+    const esquema = leerJSON('habitos_esquema', null);
+    if (esquema >= 2) return;
+    if (leerJSON('habitos_config', null) === null) guardarConfig(configPorDefecto());
+    if (leerJSON('habitos_tareas', null) === null) guardarTareas([]);
+    guardarJSON('habitos_esquema', 2);
   }
 
-  function save(habits) {
-    _mem = habits;
-    try { localStorage.setItem('habits', JSON.stringify(habits)); } catch {}
-  }
-
-  // ── Streak ──
+  // ── Racha ──
   function calcStreak(history) {
     let streak = 0;
-    const d = new Date();
-    if (!history[today()]) d.setDate(d.getDate() - 1);
-    while (history[dateStr(d)]) {
+    let d = today();
+    if (!history[d]) d = sumarDias(d, -1);
+    while (history[d]) {
       streak++;
-      d.setDate(d.getDate() - 1);
+      d = sumarDias(d, -1);
     }
     return streak;
   }
 
-  // ── Render ──
+  function textoRacha(streak) {
+    return streak > 0
+      ? `${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}`
+      : 'Sin racha aún';
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ── Pestañas ──
+  let pestanaActiva = 'habitos';
+
+  function cambiarPestana(p) {
+    pestanaActiva = p;
+    const esHabitos = p === 'habitos';
+    document.getElementById('vistaHabitos').hidden = !esHabitos;
+    document.getElementById('vistaTareas').hidden = esHabitos;
+    document.getElementById('cabeceraHabitos').hidden = !esHabitos;
+    document.getElementById('tituloVista').textContent = esHabitos ? 'Mis Hábitos' : 'Mis Tareas';
+    document.getElementById('tabHabitos').setAttribute('aria-selected', String(esHabitos));
+    document.getElementById('tabTareas').setAttribute('aria-selected', String(!esHabitos));
+    document.getElementById('fab').setAttribute('aria-label', esHabitos ? 'Añadir hábito' : 'Añadir tarea');
+    if (!esHabitos) renderTareas();
+    window.scrollTo(0, 0);
+  }
+
+  function accionFab() {
+    if (pestanaActiva === 'habitos') openModal();
+    else abrirFormTarea();
+  }
+
+  // ── Hojas inferiores (componente común) ──
+  const ORDEN_HOJAS = ['tareaOverlay', 'diaOverlay', 'ofertaOverlay', 'ajustesOverlay', 'calOverlay', 'detailOverlay'];
+
+  function abrirHoja(id) { document.getElementById(id).classList.add('open'); }
+  function cerrarHoja(id) { document.getElementById(id).classList.remove('open'); }
+  function hojaAbierta(id) { return document.getElementById(id).classList.contains('open'); }
+  function algunaHojaAbierta() {
+    return ORDEN_HOJAS.some(hojaAbierta) || document.getElementById('overlay').classList.contains('open');
+  }
+
+  ORDEN_HOJAS.forEach(id => {
+    document.getElementById(id).addEventListener('click', function (e) {
+      if (e.target === this) cerrarHoja(id);
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!document.getElementById('repaso').hidden) { cerrarRepaso(); return; }
+    if (document.getElementById('overlay').classList.contains('open')) { closeModal(); return; }
+    const abierta = ORDEN_HOJAS.find(hojaAbierta);
+    if (abierta) cerrarHoja(abierta);
+  });
+
+  // ── Render de hábitos ──
   function render() {
     const habits = load();
     const t = today();
     const list = document.getElementById('habitList');
 
-    const d = new Date();
-    document.getElementById('dateLabel').textContent = d.toLocaleDateString('es', {
-      weekday: 'short', day: 'numeric', month: 'short'
+    document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('es-ES', {
+      timeZone: ZONA, weekday: 'short', day: 'numeric', month: 'short'
     });
 
     const total = habits.length;
@@ -614,8 +1255,12 @@
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressLabel').textContent = `${done} de ${total} completados`;
 
+    const r = estadoRepaso();
+    const enCurso = !r.completado && Object.keys(r.respuestas).length > 0;
+    document.getElementById('repasoBtn').textContent = enCurso ? 'Continuar repaso' : 'Hacer repaso';
+
     if (!total) {
-      list.innerHTML = `<div class="empty"><p>🌱</p><p>Agrega tu primer habito con el boton +</p></div>`;
+      list.innerHTML = `<div class="empty"><p>🌱</p><p>Agrega tu primer hábito con el botón +</p></div>`;
       return;
     }
 
@@ -623,25 +1268,28 @@
       const isDone = h.history && h.history[t];
       const streak = calcStreak(h.history || {});
       const streakText = streak > 0
-        ? `<span class="streak-fire">🔥</span> ${streak} dia${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}`
-        : 'Sin racha aun';
+        ? `<span class="streak-fire">🔥</span> ${textoRacha(streak)}`
+        : textoRacha(0);
       return `
         <div class="habit-card ${isDone ? 'done' : ''}" onclick="openDetail(${i})">
-          <button class="check-btn" onclick="event.stopPropagation(); toggle(${i})">✓</button>
+          <button class="check-btn" type="button" aria-label="${isDone ? 'Desmarcar' : 'Marcar'} ${escHtml(h.name)}" aria-pressed="${isDone ? 'true' : 'false'}" onclick="event.stopPropagation(); toggle(${i})">✓</button>
           <div class="habit-info">
             <div class="habit-name">${escHtml(h.name)}</div>
             <div class="habit-streak">${streakText}</div>
           </div>
-          <button class="delete-btn" onclick="event.stopPropagation(); deleteHabit(${i})">✕</button>
+          <button class="delete-btn" type="button" aria-label="Eliminar ${escHtml(h.name)}" onclick="event.stopPropagation(); deleteHabit(${i})">✕</button>
         </div>`;
     }).join('');
   }
 
-  function escHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function renderTodo() {
+    render();
+    if (pestanaActiva === 'tareas') renderTareas();
+    if (hojaAbierta('calOverlay')) renderCalendar();
+    if (hojaAbierta('diaOverlay')) renderDia();
   }
 
-  // ── Actions ──
+  // ── Acciones de hábitos ──
   function toggle(i) {
     const habits = load();
     const h = habits[i];
@@ -650,14 +1298,14 @@
     if (h.history[t]) { delete h.history[t]; }
     else              { h.history[t] = true; }
     save(habits);
-    render();
+    renderTodo();
   }
 
   function deleteHabit(i) {
     const habits = load();
     habits.splice(i, 1);
     save(habits);
-    render();
+    renderTodo();
   }
 
   function addHabit() {
@@ -669,7 +1317,7 @@
       input.classList.remove('error');
       void input.offsetWidth;
       input.classList.add('error');
-      errorMsg.textContent = 'Escribe un nombre para el habito';
+      errorMsg.textContent = 'Escribe un nombre para el hábito';
       input.focus();
       return;
     }
@@ -682,10 +1330,10 @@
     habits.push({ id: Date.now(), name, description: desc, history: {} });
     save(habits);
     closeModal();
-    render();
+    renderTodo();
   }
 
-  // ── Add Modal ──
+  // ── Modal de nuevo hábito ──
   function openModal() {
     document.getElementById('habitInput').value = '';
     document.getElementById('descInput').value = '';
@@ -710,7 +1358,7 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addHabit(); }
   });
 
-  // ── Detail Sheet ──
+  // ── Detalle de hábito ──
   function openDetail(i) {
     const habits = load();
     const h = habits[i];
@@ -723,9 +1371,7 @@
     statusEl.className = 'detail-status ' + (isDone ? 'done-badge' : 'todo-badge');
 
     document.getElementById('detailName').textContent = h.name;
-    document.getElementById('detailStreak').textContent = streak > 0
-      ? `🔥 ${streak} día${streak > 1 ? 's' : ''} seguido${streak > 1 ? 's' : ''}`
-      : 'Sin racha aún';
+    document.getElementById('detailStreak').textContent = streak > 0 ? `🔥 ${textoRacha(streak)}` : textoRacha(0);
 
     const descEl = document.getElementById('detailDesc');
     if (h.description) {
@@ -736,31 +1382,603 @@
       descEl.textContent = 'Sin descripción';
     }
 
-    document.getElementById('detailOverlay').classList.add('open');
+    abrirHoja('detailOverlay');
   }
 
-  function closeDetail() {
-    document.getElementById('detailOverlay').classList.remove('open');
+  function closeDetail() { cerrarHoja('detailOverlay'); }
+
+  // ══════════════════════════════════════════════
+  // ── REPASO DIARIO ──
+  // ══════════════════════════════════════════════
+
+  // Día al que pertenece el repaso: antes de las 04:00 cuenta como el día anterior.
+  function diaRepaso(ahora = new Date()) {
+    const hoy = claveFecha(ahora);
+    return horaLocal(ahora) < HORA_CORTE_MADRUGADA ? sumarDias(hoy, -1) : hoy;
   }
 
-  document.getElementById('detailOverlay').addEventListener('click', function(e) {
-    if (e.target === this) closeDetail();
+  function estadoRepaso() {
+    const dia = diaRepaso();
+    const r = leerRepaso();
+    if (!r || r.fecha !== dia || typeof r.respuestas !== 'object' || r.respuestas === null) {
+      return { version: 1, fecha: dia, respuestas: {}, completado: false, avisoCanceladoEnviado: false };
+    }
+    return r;
+  }
+
+  function pendientesRepaso(r) {
+    return load().filter(h => !(String(h.id) in r.respuestas));
+  }
+
+  // Sesión en curso (solo en memoria): cola de ids a preguntar y posición.
+  let sesion = null;
+
+  function iniciarRepasoManual() {
+    cerrarHoja('ofertaOverlay');
+    const habits = load();
+    if (!habits.length) { mostrarRepasoSinHabitos(); return; }
+    const r = estadoRepaso();
+    const pendientes = pendientesRepaso(r);
+    if (r.completado && !pendientes.length) { mostrarFinalRepaso(true); return; }
+    empezarSesion(pendientes.map(h => h.id));
+  }
+
+  function repetirRepaso() {
+    const habits = load();
+    if (!habits.length) { mostrarRepasoSinHabitos(); return; }
+    empezarSesion(habits.map(h => h.id));
+  }
+
+  function empezarSesion(ids) {
+    const r = estadoRepaso();
+    guardarRepaso(r);
+    sesion = { cola: ids, indice: 0 };
+    abrirRepaso();
+    renderPregunta();
+  }
+
+  function abrirRepaso() {
+    const el = document.getElementById('repaso');
+    el.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarRepaso() {
+    sesion = null;
+    document.getElementById('repaso').hidden = true;
+    document.body.style.overflow = '';
+    renderTodo();
+  }
+
+  function renderPregunta() {
+    const el = document.getElementById('repaso');
+    const habits = load();
+    // Saltar ids que ya no existan (hábitos eliminados mientras tanto).
+    while (sesion.indice < sesion.cola.length && !habits.some(h => h.id === sesion.cola[sesion.indice])) {
+      sesion.indice++;
+    }
+    if (sesion.indice >= sesion.cola.length) { terminarRepaso(); return; }
+
+    const r = estadoRepaso();
+    const h = habits.find(x => x.id === sesion.cola[sesion.indice]);
+    const total = sesion.cola.length;
+    const n = sesion.indice + 1;
+    const yaMarcado = h.history && h.history[r.fecha];
+    const esAyer = r.fecha !== today();
+
+    el.innerHTML = `
+      <div class="repaso-top">
+        <button class="repaso-salir" type="button" onclick="cerrarRepaso()">✕ Salir</button>
+        <span class="repaso-contador">${n} de ${total}</span>
+      </div>
+      <div class="barra-repaso" aria-hidden="true"><div style="width:${Math.round((n - 1) / total * 100)}%"></div></div>
+      <div class="repaso-cuerpo">
+        <p class="repaso-pregunta">${esAyer ? '¿Lo cumpliste ayer?' : '¿Lo has cumplido hoy?'}</p>
+        <div class="repaso-tarjeta">
+          ${yaMarcado ? '<span class="repaso-etiqueta">Ya marcado</span>' : ''}
+          <div class="repaso-nombre">${escHtml(h.name)}</div>
+          ${h.description ? `<div class="repaso-desc">${escHtml(h.description)}</div>` : ''}
+        </div>
+        <div class="repaso-acciones">
+          <button class="btn btn-primary" type="button" onclick="responderRepaso('si')">Sí, cumplido</button>
+          <button class="btn btn-secondary" type="button" onclick="responderRepaso('no')">No</button>
+          <button class="btn btn-secondary" type="button" onclick="responderRepaso('saltar')">Saltar</button>
+        </div>
+      </div>`;
+    el.querySelector('.btn-primary').focus({ preventScroll: true });
+  }
+
+  function responderRepaso(valor) {
+    if (!sesion) return;
+    const id = sesion.cola[sesion.indice];
+    if (valor === 'si' || valor === 'no') {
+      const r = estadoRepaso();
+      r.respuestas[String(id)] = valor;
+      if (valor === 'si') {
+        const habits = load();
+        const h = habits.find(x => x.id === id);
+        if (h) {
+          if (!h.history) h.history = {};
+          h.history[r.fecha] = true;
+          save(habits);
+        }
+      }
+      // «No» no desmarca un hábito ya marcado (research D6).
+      guardarRepaso(r);
+    }
+    // «Saltar» no guarda nada: el hábito queda pendiente para continuar luego.
+    sesion.indice++;
+    render();
+    renderPregunta();
+  }
+
+  function terminarRepaso() {
+    const r = estadoRepaso();
+    const yaEstaba = r.completado;
+    r.completado = true;
+    guardarRepaso(r);
+    sesion = null;
+    mostrarFinalRepaso(false);
+    if (!yaEstaba) notificarRepasoHecho();
+  }
+
+  function mostrarFinalRepaso(yaHecho) {
+    const r = estadoRepaso();
+    const habits = load();
+    const cumplidos = habits.filter(h => h.history && h.history[r.fecha]);
+    const el = document.getElementById('repaso');
+    el.innerHTML = `
+      <div class="repaso-cuerpo repaso-final">
+        <div class="grande" aria-hidden="true">${cumplidos.length === habits.length && habits.length ? '🎉' : '✅'}</div>
+        <h2>${yaHecho ? 'El repaso de hoy ya está hecho' : 'Repaso terminado'}</h2>
+        <p class="resumen">${cumplidos.length} de ${habits.length} cumplidos</p>
+        ${cumplidos.length ? `<ul>${cumplidos.map(h => `<li>${escHtml(h.name)}</li>`).join('')}</ul>` : ''}
+        <div class="modal-actions">
+          <button class="btn btn-primary" type="button" onclick="cerrarRepaso()">Volver</button>
+          ${yaHecho ? '<button class="btn btn-secondary" type="button" onclick="repetirRepaso()">Repetir</button>' : ''}
+        </div>
+      </div>`;
+    abrirRepaso();
+    el.querySelector('.btn-primary').focus({ preventScroll: true });
+  }
+
+  function mostrarRepasoSinHabitos() {
+    const el = document.getElementById('repaso');
+    el.innerHTML = `
+      <div class="repaso-cuerpo repaso-final">
+        <div class="grande" aria-hidden="true">🌱</div>
+        <h2>Aún no tienes hábitos</h2>
+        <p class="resumen">Crea uno para empezar a repasar.</p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" type="button" onclick="cerrarRepaso(); cambiarPestana('habitos'); openModal()">Crear hábito</button>
+          <button class="btn btn-secondary" type="button" onclick="cerrarRepaso()">Volver</button>
+        </div>
+      </div>`;
+    abrirRepaso();
+  }
+
+  // Abrir desde la notificación (?repaso=1 o mensaje del service worker).
+  function abrirDesdeNotificacion() {
+    cerrarHoja('ofertaOverlay');
+    if (!load().length) { mostrarRepasoSinHabitos(); return; }
+    const r = estadoRepaso();
+    if (r.completado) mostrarFinalRepaso(true);
+    else iniciarRepasoManual();
+  }
+
+  // Oferta al abrir la app tras la hora configurada (FR-004).
+  let ofertaMostradaEstaApertura = false;
+
+  function comprobarOfertaRepaso() {
+    if (ofertaMostradaEstaApertura) return;
+    if (!document.getElementById('repaso').hidden || algunaHojaAbierta()) return;
+    const cfg = leerConfig();
+    if (!cfg.repasoActivo || !load().length) return;
+    const ahora = horaLocal();
+    const pasoLaHora = ahora >= cfg.hora || ahora < HORA_CORTE_MADRUGADA;
+    if (!pasoLaHora) return;
+    const r = estadoRepaso();
+    if (r.completado) return;
+    ofertaMostradaEstaApertura = true;
+    abrirHoja('ofertaOverlay');
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      ofertaMostradaEstaApertura = false;
+    } else {
+      renderTodo();
+      comprobarOfertaRepaso();
+    }
   });
 
-  // ── Calendar ──
+  // ══════════════════════════════════════════════
+  // ── AJUSTES Y AVISOS ──
+  // ══════════════════════════════════════════════
+
+  let errorAvisos = '';
+  const MSG_ERROR_AVISOS = 'No se pudo programar el aviso. Te preguntaremos al abrir la app.';
+
+  function esIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function soportaAvisos() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return false;
+    if (esIOS() && navigator.standalone !== true) return false;
+    return true;
+  }
+
+  function abrirAjustes() {
+    errorAvisos = '';
+    renderAjustes();
+    abrirHoja('ajustesOverlay');
+  }
+
+  function renderAjustes() {
+    const cfg = leerConfig();
+    document.getElementById('ajusteActivo').checked = cfg.repasoActivo;
+    document.getElementById('ajusteHora').value = cfg.hora;
+    document.getElementById('ajusteHora').disabled = !cfg.repasoActivo;
+
+    const caja = document.getElementById('avisosCaja');
+    let html = '';
+    if (!cfg.repasoActivo) {
+      html = 'El repaso diario está desactivado. Actívalo para recibir avisos.';
+    } else if (cfg.avisos === 'no-soportado') {
+      html = 'Para recibir avisos en iPhone, añade la app a la pantalla de inicio: <strong>Compartir › Añadir a pantalla de inicio</strong>.';
+    } else if (cfg.avisos === 'concedido') {
+      html = `<span class="aviso-ok">Avisos activados ✓</span><br>Recibirás una notificación cada día a las ${escHtml(cfg.hora)}.
+        <button class="btn btn-secondary" type="button" onclick="desactivarAvisos()">Desactivar avisos</button>`;
+    } else if (cfg.avisos === 'denegado') {
+      html = 'Has bloqueado los avisos. Actívalos en <strong>Ajustes del móvil › Notificaciones › Hábitos</strong>.';
+    } else {
+      html = `Recibe una notificación a la hora del repaso, aunque la app esté cerrada.
+        <button class="btn btn-primary" type="button" onclick="activarAvisos()">Activar avisos</button>`;
+    }
+    if (errorAvisos) html += `<div class="aviso-error" role="alert">${escHtml(errorAvisos)}</div>`;
+    caja.innerHTML = html;
+  }
+
+  function cambiarRepasoActivo(activo) {
+    const cfg = leerConfig();
+    cfg.repasoActivo = activo;
+    guardarConfig(cfg);
+    errorAvisos = '';
+    if (!activo && cfg.avisos === 'concedido') desactivarAvisos();
+    renderAjustes();
+  }
+
+  function cambiarHora(valor) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(valor)) { renderAjustes(); return; }
+    const cfg = leerConfig();
+    cfg.hora = valor;
+    guardarConfig(cfg);
+    errorAvisos = '';
+    renderAjustes();
+    if (cfg.avisos === 'concedido') {
+      suscribirYRegistrar().catch(() => { errorAvisos = MSG_ERROR_AVISOS; renderAjustes(); });
+    }
+  }
+
+  async function api(ruta, metodo, cuerpo) {
+    if (!URL_AVISOS) throw new Error('El servicio de avisos no está configurado (URL_AVISOS vacía).');
+    const opciones = { method: metodo, headers: {} };
+    if (cuerpo !== undefined) {
+      opciones.headers['Content-Type'] = 'application/json';
+      opciones.body = JSON.stringify(cuerpo);
+    }
+    const res = await fetch(URL_AVISOS.replace(/\/$/, '') + ruta, opciones);
+    if (!res.ok) {
+      const e = new Error(`El servicio de avisos respondió ${res.status}`);
+      e.estado = res.status;
+      throw e;
+    }
+    return res.json();
+  }
+
+  function base64urlABytes(texto) {
+    const relleno = '='.repeat((4 - texto.length % 4) % 4);
+    const b64 = (texto + relleno).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  }
+
+  async function suscribirYRegistrar() {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const { clavePublica } = await api('/clave-publica', 'GET');
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64urlABytes(clavePublica) });
+    }
+    const cfg = leerConfig();
+    // Solo se envía lo imprescindible (FR-003b).
+    await api('/suscripcion', 'PUT', { endpoint: sub.endpoint, hora: cfg.hora, zonaHoraria: cfg.zonaHoraria });
+    const cfg2 = leerConfig();
+    cfg2.endpointRegistrado = sub.endpoint;
+    guardarConfig(cfg2);
+    if (estadoRepaso().completado) await notificarRepasoHecho(false);
+  }
+
+  async function activarAvisos() {
+    errorAvisos = '';
+    if (!soportaAvisos()) {
+      const cfg = leerConfig();
+      cfg.avisos = 'no-soportado';
+      guardarConfig(cfg);
+      renderAjustes();
+      return;
+    }
+    let permiso;
+    try { permiso = await Notification.requestPermission(); }
+    catch { permiso = Notification.permission; }
+
+    const cfg = leerConfig();
+    if (permiso !== 'granted') {
+      cfg.avisos = permiso === 'denied' ? 'denegado' : 'no-solicitado';
+      guardarConfig(cfg);
+      renderAjustes();
+      return;
+    }
+    cfg.avisos = 'concedido';
+    guardarConfig(cfg);
+    try {
+      await suscribirYRegistrar();
+    } catch (e) {
+      console.warn(e);
+      errorAvisos = MSG_ERROR_AVISOS;
+    }
+    renderAjustes();
+  }
+
+  async function desactivarAvisos() {
+    const cfg = leerConfig();
+    const endpoint = cfg.endpointRegistrado;
+    cfg.avisos = 'no-solicitado';
+    cfg.endpointRegistrado = null;
+    guardarConfig(cfg);
+    renderAjustes();
+    try {
+      if (endpoint) await api('/suscripcion', 'DELETE', { endpoint });
+    } catch (e) { console.warn(e); }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    } catch (e) { console.warn(e); }
+  }
+
+  // Avisa al worker de que el repaso de hoy ya está hecho (research D5).
+  async function notificarRepasoHecho(reintentarRegistro = true) {
+    const cfg = leerConfig();
+    if (cfg.avisos !== 'concedido' || !cfg.endpointRegistrado) return;
+    const r = estadoRepaso();
+    try {
+      await api('/suscripcion/hecho', 'POST', { endpoint: cfg.endpointRegistrado, fecha: r.fecha });
+      const r2 = estadoRepaso();
+      r2.avisoCanceladoEnviado = true;
+      guardarRepaso(r2);
+    } catch (e) {
+      if (e.estado === 404 && reintentarRegistro) {
+        try { await suscribirYRegistrar(); } catch (e2) { console.warn(e2); }
+      } else {
+        console.warn(e);
+      }
+    }
+  }
+
+  // Sincronización al arrancar (research R2 y reevaluación de «no-soportado»).
+  async function sincronizarAvisos() {
+    const cfg = leerConfig();
+    if (!soportaAvisos()) {
+      if (cfg.avisos === 'no-solicitado') { cfg.avisos = 'no-soportado'; guardarConfig(cfg); }
+      return;
+    }
+    if (cfg.avisos === 'no-soportado') { cfg.avisos = 'no-solicitado'; guardarConfig(cfg); return; }
+    if (cfg.avisos === 'denegado' && Notification.permission === 'granted') { cfg.avisos = 'concedido'; guardarConfig(cfg); }
+    if (cfg.avisos === 'concedido' && Notification.permission === 'denied') { cfg.avisos = 'denegado'; guardarConfig(cfg); return; }
+    if (cfg.avisos !== 'concedido' || !cfg.repasoActivo) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub || sub.endpoint !== cfg.endpointRegistrado) await suscribirYRegistrar();
+    } catch (e) { console.warn(e); }
+  }
+
+  // ══════════════════════════════════════════════
+  // ── TAREAS ──
+  // ══════════════════════════════════════════════
+
+  const RE_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+  const RE_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  // Valida y normaliza los datos de una tarea. Devuelve { datos } o { error }.
+  function validarTarea({ titulo, nota, fecha, hora }) {
+    titulo = (titulo || '').trim();
+    nota = (nota || '').trim();
+    fecha = fecha && RE_FECHA.test(fecha) ? fecha : null;
+    hora = fecha && hora && RE_HORA.test(hora) ? hora : null;
+    if (!titulo) return { error: 'Escribe un título para la tarea' };
+    if (titulo.length > 80) return { error: 'El título no puede superar los 80 caracteres' };
+    if (nota.length > 200) return { error: 'La nota no puede superar los 200 caracteres' };
+    return { datos: { titulo, nota, fecha, hora } };
+  }
+
+  function crearTarea(entrada) {
+    const v = validarTarea(entrada);
+    if (v.error) return v;
+    const tareas = leerTareas();
+    const id = Math.max(Date.now(), ...tareas.map(t => t.id + 1));
+    tareas.push({ id, ...v.datos, hecha: false, creadaEn: Date.now(), hechaEn: null });
+    guardarTareas(tareas);
+    return { ok: true };
+  }
+
+  function editarTarea(id, entrada) {
+    const v = validarTarea(entrada);
+    if (v.error) return v;
+    const tareas = leerTareas();
+    const t = tareas.find(x => x.id === id);
+    if (!t) return { error: 'La tarea ya no existe' };
+    Object.assign(t, v.datos);
+    guardarTareas(tareas);
+    return { ok: true };
+  }
+
+  function eliminarTarea(id) {
+    guardarTareas(leerTareas().filter(t => t.id !== id));
+    renderTodo();
+  }
+
+  function alternarTarea(id) {
+    const tareas = leerTareas();
+    const t = tareas.find(x => x.id === id);
+    if (!t) return;
+    t.hecha = !t.hecha;
+    t.hechaEn = t.hecha ? Date.now() : null;
+    guardarTareas(tareas);
+    renderTodo();
+  }
+
+  function esVencida(t, hoy = today(), ahora = horaLocal()) {
+    if (t.hecha || !t.fecha) return false;
+    return t.fecha < hoy || (t.fecha === hoy && t.hora !== null && t.hora !== undefined && t.hora < ahora);
+  }
+
+  function compararPendientes(a, b) {
+    if (a.fecha !== b.fecha) {
+      if (!a.fecha) return 1;
+      if (!b.fecha) return -1;
+      return a.fecha < b.fecha ? -1 : 1;
+    }
+    const ha = a.hora || '', hb = b.hora || '';   // sin hora antes que con hora
+    if (ha !== hb) return ha < hb ? -1 : 1;
+    return a.creadaEn - b.creadaEn;
+  }
+
+  function metaTarea(t) {
+    const partes = [];
+    if (t.fecha) {
+      let txt = t.fecha === today() ? 'Hoy' : t.fecha === sumarDias(today(), 1) ? 'Mañana' : fechaCorta(t.fecha);
+      if (t.hora) txt += `, ${t.hora}`;
+      partes.push((t.hora ? '🕒 ' : '') + txt);
+    }
+    if (t.nota) partes.push(escHtml(t.nota.length > 60 ? t.nota.slice(0, 60) + '…' : t.nota));
+    return partes.join(' · ');
+  }
+
+  function filaTarea(t) {
+    const vencida = esVencida(t);
+    const meta = metaTarea(t);
+    return `
+      <div class="tarea ${t.hecha ? 'hecha' : ''} ${vencida ? 'vencida' : ''}">
+        <button class="tarea-check" type="button" aria-label="${t.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}: ${escHtml(t.titulo)}" aria-pressed="${t.hecha}" onclick="alternarTarea(${t.id})"><span>✓</span></button>
+        <button class="tarea-cuerpo" type="button" aria-label="Editar ${escHtml(t.titulo)}" onclick="abrirFormTarea(${t.id})">
+          <span class="tarea-titulo">${t.hora ? '📅 ' : ''}${escHtml(t.titulo)}</span>
+          ${meta ? `<span class="tarea-meta">${meta}${vencida ? ' · Vencida' : ''}</span>` : ''}
+        </button>
+        <button class="delete-btn" type="button" aria-label="Eliminar ${escHtml(t.titulo)}" onclick="eliminarTarea(${t.id})">✕</button>
+      </div>`;
+  }
+
+  let completadasAbiertas = false;
+
+  function renderTareas() {
+    const cont = document.getElementById('listaTareas');
+    const tareas = leerTareas();
+    const pendientes = tareas.filter(t => !t.hecha).sort(compararPendientes);
+    const vencidas = pendientes.filter(t => esVencida(t));
+    const proximas = pendientes.filter(t => t.fecha && !esVencida(t));
+    const sinFecha = pendientes.filter(t => !t.fecha);
+    const hechas = tareas.filter(t => t.hecha).sort((a, b) => (b.hechaEn || 0) - (a.hechaEn || 0));
+
+    const seccion = (titulo, lista, clase = '') => lista.length ? `
+      <section class="tareas-seccion ${clase}">
+        <h2 class="seccion-titulo">${titulo} (${lista.length})</h2>
+        <div class="tarea-lista">${lista.map(filaTarea).join('')}</div>
+      </section>` : '';
+
+    let html = '';
+    if (!pendientes.length) {
+      html += `<div class="empty"><p>📝</p><p>No tienes tareas pendientes</p></div>`;
+    }
+    html += seccion('Vencidas', vencidas, 'vencidas');
+    html += seccion('Próximas', proximas);
+    html += seccion('Sin fecha', sinFecha);
+    if (hechas.length) {
+      html += `
+        <details class="tareas-seccion completadas" ${completadasAbiertas ? 'open' : ''} ontoggle="completadasAbiertas = this.open">
+          <summary class="seccion-titulo">Completadas (${hechas.length})</summary>
+          <div class="tarea-lista">${hechas.map(filaTarea).join('')}</div>
+        </details>`;
+    }
+    cont.innerHTML = html;
+  }
+
+  // ── Formulario de tarea ──
+  let tareaEditando = null;
+
+  function abrirFormTarea(id = null, fechaPreset = null) {
+    tareaEditando = id;
+    const t = id !== null ? leerTareas().find(x => x.id === id) : null;
+    document.getElementById('tareaFormTitulo').textContent = t ? 'Editar tarea' : 'Nueva tarea';
+    document.getElementById('tareaTitulo').value = t ? t.titulo : '';
+    document.getElementById('tareaNota').value = t ? (t.nota || '') : '';
+    document.getElementById('tareaFecha').value = t ? (t.fecha || '') : (fechaPreset || '');
+    document.getElementById('tareaHora').value = t ? (t.hora || '') : '';
+    document.getElementById('tareaTitulo').classList.remove('error');
+    document.getElementById('tareaError').textContent = '';
+    actualizarCampoHora();
+    abrirHoja('tareaOverlay');
+    setTimeout(() => document.getElementById('tareaTitulo').focus(), 300);
+  }
+
+  function actualizarCampoHora() {
+    const hayFecha = !!document.getElementById('tareaFecha').value;
+    const hora = document.getElementById('tareaHora');
+    hora.disabled = !hayFecha;
+    if (!hayFecha) hora.value = '';
+  }
+
+  function guardarTareaDesdeForm() {
+    const entrada = {
+      titulo: document.getElementById('tareaTitulo').value,
+      nota: document.getElementById('tareaNota').value,
+      fecha: document.getElementById('tareaFecha').value,
+      hora: document.getElementById('tareaHora').value
+    };
+    const res = tareaEditando !== null ? editarTarea(tareaEditando, entrada) : crearTarea(entrada);
+    if (res.error) {
+      const input = document.getElementById('tareaTitulo');
+      input.classList.remove('error');
+      void input.offsetWidth;
+      input.classList.add('error');
+      document.getElementById('tareaError').textContent = res.error;
+      input.focus();
+      return;
+    }
+    cerrarHoja('tareaOverlay');
+    renderTodo();
+  }
+
+  document.getElementById('tareaTitulo').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); guardarTareaDesdeForm(); }
+  });
+
+  // ══════════════════════════════════════════════
+  // ── CALENDARIO Y DETALLE DEL DÍA ──
+  // ══════════════════════════════════════════════
+
   let calYear, calMonth;
 
   function openCalendar() {
-    const now = new Date();
-    calYear  = now.getFullYear();
-    calMonth = now.getMonth();
+    const [y, m] = today().split('-').map(Number);
+    calYear  = y;
+    calMonth = m - 1;
     renderCalendar();
-    document.getElementById('calOverlay').classList.add('open');
+    abrirHoja('calOverlay');
   }
 
-  function closeCalendar() {
-    document.getElementById('calOverlay').classList.remove('open');
-  }
+  function closeCalendar() { cerrarHoja('calOverlay'); }
 
   function prevMonth() {
     if (calMonth === 0) { calMonth = 11; calYear--; } else { calMonth--; }
@@ -779,12 +1997,14 @@
     const grid     = document.getElementById('calContent');
     const label    = document.getElementById('calMonthLabel');
 
+    const diasConPendientes = new Set(leerTareas().filter(t => !t.hecha && t.fecha).map(t => t.fecha));
+
     label.textContent = `${MONTHS_ES[calMonth]} ${calYear}`;
     grid.innerHTML = '';
 
     const firstDay    = new Date(calYear, calMonth, 1);
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-    const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
+    const startOffset = (firstDay.getDay() + 6) % 7; // lunes = 0
 
     for (let i = 0; i < startOffset; i++) {
       const blank = document.createElement('div');
@@ -796,44 +2016,116 @@
       const mm  = String(calMonth + 1).padStart(2, '0');
       const dd  = String(day).padStart(2, '0');
       const ds  = `${calYear}-${mm}-${dd}`;
-      const cell = document.createElement('div');
+      const cell = document.createElement('button');
+      cell.type = 'button';
       cell.className = 'cal-day';
+      cell.onclick = () => abrirDia(ds);
 
       const numEl = document.createElement('span');
       numEl.className = 'cal-day-num';
       numEl.textContent = day;
       cell.appendChild(numEl);
 
+      let etiqueta = `${day} de ${MONTHS_ES[calMonth].toLowerCase()}`;
+
       if (ds > todayStr) {
         cell.classList.add('future');
       } else {
-        if (ds === todayStr) cell.classList.add('today');
-
-        if (total === 0) {
+        if (ds === todayStr) { cell.classList.add('today'); etiqueta += ', hoy'; }
+        const done = total ? habits.filter(h => h.history && h.history[ds]).length : 0;
+        if (done === 0) {
           cell.classList.add('none');
         } else {
-          const done = habits.filter(h => h.history && h.history[ds]).length;
-          if (done === 0) {
-            cell.classList.add('none');
-          } else {
-            cell.classList.add(done === total ? 'all-done' : 'partial');
-            const cnt = document.createElement('span');
-            cnt.className = 'cal-day-count';
-            cnt.textContent = `${done}/${total}`;
-            cell.appendChild(cnt);
-          }
+          cell.classList.add(done === total ? 'all-done' : 'partial');
+          const cnt = document.createElement('span');
+          cnt.className = 'cal-day-count';
+          cnt.textContent = `${done}/${total}`;
+          cell.appendChild(cnt);
+          etiqueta += `, ${done} de ${total} hábitos cumplidos`;
         }
       }
 
+      if (diasConPendientes.has(ds)) {
+        const dot = document.createElement('span');
+        dot.className = 'cal-dot';
+        cell.appendChild(dot);
+        etiqueta += ', con tareas pendientes';
+      }
+
+      cell.setAttribute('aria-label', etiqueta);
       grid.appendChild(cell);
     }
   }
 
-  document.getElementById('calOverlay').addEventListener('click', function(e) {
-    if (e.target === this) closeCalendar();
-  });
+  let diaAbierto = null;
 
+  function abrirDia(ds) {
+    diaAbierto = ds;
+    renderDia();
+    abrirHoja('diaOverlay');
+  }
+
+  function renderDia() {
+    if (!diaAbierto) return;
+    const ds = diaAbierto;
+    document.getElementById('diaTitulo').textContent = fechaLarga(ds);
+
+    let html = '';
+    if (ds <= today()) {
+      const habits = load();
+      html += '<section class="dia-seccion"><h3 class="seccion-titulo">Hábitos</h3>';
+      if (!habits.length) {
+        html += '<p class="texto-suave">No tienes hábitos.</p>';
+      } else {
+        const hechos = habits.filter(h => h.history && h.history[ds]).length;
+        if (!hechos) html += '<p class="texto-suave">Ningún hábito cumplido este día</p>';
+        html += habits.map(h => {
+          const si = !!(h.history && h.history[ds]);
+          return `<div class="dia-habito ${si ? 'si' : 'no'}"><span class="dia-marca" aria-hidden="true">${si ? '✓' : '○'}</span><span>${escHtml(h.name)}<span class="sr-only">${si ? ' (cumplido)' : ' (no cumplido)'}</span></span></div>`;
+        }).join('');
+      }
+      html += '</section>';
+    }
+
+    const tareasDia = leerTareas().filter(t => t.fecha === ds)
+      .sort((a, b) => (a.hecha - b.hecha) || compararPendientes(a, b));
+    html += '<section class="dia-seccion"><h3 class="seccion-titulo">Tareas y eventos</h3>';
+    html += tareasDia.length
+      ? `<div class="tarea-lista">${tareasDia.map(filaTarea).join('')}</div>`
+      : '<p class="texto-suave">Nada programado este día</p>';
+    html += `<div class="modal-actions"><button class="btn btn-primary" type="button" onclick="abrirFormTarea(null, '${ds}')">Añadir tarea</button></div>`;
+    html += '</section>';
+
+    document.getElementById('diaContenido').innerHTML = html;
+  }
+
+  // ══════════════════════════════════════════════
+  // ── ARRANQUE ──
+  // ══════════════════════════════════════════════
+
+  migrar();
   render();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('No se pudo registrar el service worker:', e));
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.tipo === 'abrir-repaso') abrirDesdeNotificacion();
+    });
+  }
+
+  (function arranque() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('repaso') === '1') {
+      history.replaceState(null, '', location.pathname);
+      abrirDesdeNotificacion();
+    } else {
+      comprobarOfertaRepaso();
+    }
+    sincronizarAvisos();
+  })();
+
+  // Refresca vencidas y la fecha de la cabecera cada minuto.
+  setInterval(() => { if (document.visibilityState === 'visible') renderTodo(); }, 60000);
 </script>
 </body>
 </html>

@@ -1,0 +1,18 @@
+# Configuración del worker de avisos diarios (ver LEEME.md).
+# La clave privada VAPID NO va aquí: se guarda como secret con
+#   npx wrangler secret put VAPID_CLAVE_PRIVADA
+name = "habitos-avisos"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "SUSCRIPCIONES"
+id = "PON_AQUI_EL_ID_DEL_KV"
+
+[vars]
+VAPID_CLAVE_PUBLICA = "PON_AQUI_LA_CLAVE_PUBLICA_BASE64URL"
+VAPID_SUJETO = "mailto:tu-correo@ejemplo.com"
+ORIGEN_PERMITIDO = "https://saulperezz.github.io"

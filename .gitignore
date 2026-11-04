@@ -1,0 +1,14 @@
+# Cloudflare Workers / Node (solo para desplegar notificaciones/)
+node_modules/
+.wrangler/
+.dev.vars
+.env*
+*.log
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
