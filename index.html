@@ -475,6 +475,29 @@
       padding-bottom: 12px;
     }
 
+    .detail-desc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .detail-desc-row .detail-desc-label { margin-bottom: 0; }
+    .detail-edit-btn {
+      min-height: 44px;
+      background: var(--surface2);
+      border: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 22px;
+      cursor: pointer;
+    }
+    .detail-edit-btn:active { background: var(--accent); color: #fff; }
+    .detail-edit-area { display: none; padding-bottom: 12px; }
+    .detail-edit-area.open { display: block; }
+    .detail-edit-area textarea { margin-top: 0; height: 90px; }
+
     .detail-no-desc {
       font-size: 14px;
       color: var(--text-muted);
@@ -630,6 +653,29 @@
       word-break: break-word;
     }
     .dia-habito:last-child { border-bottom: none; }
+    button.dia-habito {
+      width: 100%;
+      min-height: 48px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--surface2);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button.dia-habito:active { background: var(--surface2); }
+    .dia-resumen {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .cal-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0 12px 8px;
+    }
     .dia-marca { width: 22px; text-align: center; flex-shrink: 0; font-weight: 700; }
     .dia-habito.si .dia-marca { color: var(--done); }
     .dia-habito.no { color: var(--text-muted); }
@@ -977,8 +1023,18 @@
     <div id="detailStatus" class="detail-status"></div>
     <div id="detailName"   class="detail-name"></div>
     <div id="detailStreak" class="detail-streak"></div>
-    <div class="detail-desc-label">Descripción</div>
+    <div class="detail-desc-row">
+      <div class="detail-desc-label">Descripción</div>
+      <button class="detail-edit-btn" type="button" id="detailEditBtn" onclick="startEditDesc()">Editar</button>
+    </div>
     <div id="detailDesc"></div>
+    <div id="detailEdit" class="detail-edit-area">
+      <textarea class="campo" id="detailDescInput" maxlength="120" placeholder="Escribe una descripción…" aria-label="Descripción"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" onclick="cancelEditDesc()">Cancelar</button>
+        <button class="btn btn-primary" type="button" onclick="saveEditDesc()">Guardar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1001,6 +1057,7 @@
       <span class="cal-weekday">Do</span>
     </div>
     <div class="cal-grid" id="calContent"></div>
+    <div class="cal-hint">Toca cualquier día para editar tus hábitos o añadir tareas</div>
     <div class="cal-leyenda">
       <span class="ley-hecho">Todos cumplidos</span>
       <span class="ley-parcial">Algunos cumplidos</span>
@@ -1161,6 +1218,26 @@
 
   function leerRepaso() { return leerJSON('habitos_repaso', null); }
   function guardarRepaso(r) { guardarJSON('habitos_repaso', r); }
+
+  // Hábitos por defecto: solo la primera vez que se usa la app (si nunca existió «habits»).
+  const DEFAULT_HABITS = [
+    'Madrugar',
+    'No FAP',
+    'Beber agua',
+    'Comer',
+    'Lavarse los dientes',
+    'Estudiar',
+    'No doomscrolling'
+  ];
+
+  function seedIfFirstRun() {
+    let raw;
+    try { raw = localStorage.getItem('habits'); } catch { raw = undefined; }
+    if (raw === null && !('habits' in _mem)) {
+      const base = Date.now();
+      save(DEFAULT_HABITS.map((name, k) => ({ id: base + k, name, description: '', history: {} })));
+    }
+  }
 
   // Migración v1 → v2: nunca reescribe ni borra «habits».
   function migrar() {
@@ -1373,6 +1450,17 @@
     document.getElementById('detailName').textContent = h.name;
     document.getElementById('detailStreak').textContent = streak > 0 ? `🔥 ${textoRacha(streak)}` : textoRacha(0);
 
+    currentDetailId = h.id;
+    showDescView(h);
+    abrirHoja('detailOverlay');
+  }
+
+  function closeDetail() { cerrarHoja('detailOverlay'); }
+
+  // Edición de la descripción desde el detalle
+  let currentDetailId = null;
+
+  function showDescView(h) {
     const descEl = document.getElementById('detailDesc');
     if (h.description) {
       descEl.className = 'detail-desc';
@@ -1381,11 +1469,36 @@
       descEl.className = 'detail-no-desc';
       descEl.textContent = 'Sin descripción';
     }
-
-    abrirHoja('detailOverlay');
+    descEl.hidden = false;
+    document.getElementById('detailEditBtn').hidden = false;
+    document.getElementById('detailEdit').classList.remove('open');
   }
 
-  function closeDetail() { cerrarHoja('detailOverlay'); }
+  function startEditDesc() {
+    const h = load().find(x => x.id === currentDetailId);
+    if (!h) return;
+    document.getElementById('detailDesc').hidden = true;
+    document.getElementById('detailEditBtn').hidden = true;
+    const ta = document.getElementById('detailDescInput');
+    ta.value = h.description || '';
+    document.getElementById('detailEdit').classList.add('open');
+    setTimeout(() => ta.focus(), 50);
+  }
+
+  function saveEditDesc() {
+    const habits = load();
+    const h = habits.find(x => x.id === currentDetailId);
+    if (!h) return;
+    h.description = document.getElementById('detailDescInput').value.trim().slice(0, 120);
+    save(habits);
+    showDescView(h);
+    renderTodo();
+  }
+
+  function cancelEditDesc() {
+    const h = load().find(x => x.id === currentDetailId);
+    if (h) showDescView(h);
+  }
 
   // ══════════════════════════════════════════════
   // ── REPASO DIARIO ──
@@ -2057,6 +2170,19 @@
     }
   }
 
+  // Marca/desmarca un hábito en cualquier día pasado o en hoy (desde el detalle del día).
+  function toggleOnDate(id, ds) {
+    if (ds > today()) return;
+    const habits = load();
+    const h = habits.find(x => x.id === id);
+    if (!h) return;
+    if (!h.history) h.history = {};
+    if (h.history[ds]) { delete h.history[ds]; }
+    else               { h.history[ds] = true; }
+    save(habits);
+    renderTodo();
+  }
+
   let diaAbierto = null;
 
   function abrirDia(ds) {
@@ -2068,7 +2194,7 @@
   function renderDia() {
     if (!diaAbierto) return;
     const ds = diaAbierto;
-    document.getElementById('diaTitulo').textContent = fechaLarga(ds);
+    document.getElementById('diaTitulo').textContent = fechaLarga(ds) + (ds === today() ? ' · Hoy' : '');
 
     let html = '';
     if (ds <= today()) {
@@ -2078,10 +2204,11 @@
         html += '<p class="texto-suave">No tienes hábitos.</p>';
       } else {
         const hechos = habits.filter(h => h.history && h.history[ds]).length;
+        html += `<p class="dia-resumen">${hechos} de ${habits.length} completados · toca un hábito para marcarlo o desmarcarlo</p>`;
         if (!hechos) html += '<p class="texto-suave">Ningún hábito cumplido este día</p>';
         html += habits.map(h => {
           const si = !!(h.history && h.history[ds]);
-          return `<div class="dia-habito ${si ? 'si' : 'no'}"><span class="dia-marca" aria-hidden="true">${si ? '✓' : '○'}</span><span>${escHtml(h.name)}<span class="sr-only">${si ? ' (cumplido)' : ' (no cumplido)'}</span></span></div>`;
+          return `<button type="button" class="dia-habito ${si ? 'si' : 'no'}" aria-pressed="${si}" onclick="toggleOnDate(${h.id}, '${ds}')"><span class="dia-marca" aria-hidden="true">${si ? '✓' : '○'}</span><span>${escHtml(h.name)}<span class="sr-only">${si ? ' (cumplido)' : ' (no cumplido)'}</span></span></button>`;
         }).join('');
       }
       html += '</section>';
@@ -2103,6 +2230,7 @@
   // ── ARRANQUE ──
   // ══════════════════════════════════════════════
 
+  seedIfFirstRun();
   migrar();
   render();
 

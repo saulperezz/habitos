@@ -246,8 +246,10 @@ queda texto en otro idioma (salvo nombres propios o términos técnicos sin trad
 - La hora de repaso es una sola para todos los hábitos (no una por hábito); por defecto las 22:00.
 - Todos los hábitos son diarios; no se introducen frecuencias semanales ni días concretos.
 - El repaso hecho entre las 00:00 y las 04:00 se registra para el día anterior.
-- El repaso no permite editar días anteriores al actual (salvo el caso de madrugada anterior); la
-  edición de días pasados queda fuera de alcance.
+- El repaso no permite editar días anteriores al actual (salvo el caso de madrugada anterior). Los
+  días pasados se editan desde el detalle del día en el calendario, tocando cada hábito (función
+  incorporada desde el PR #1 de GitHub), junto con la edición de la descripción de un hábito y los
+  hábitos por defecto del primer uso.
 - Las tareas no son recurrentes y no generan avisos propios en esta versión.
 - La app se usa principalmente añadida a la pantalla de inicio del móvil; esto es requisito para
   recibir notificaciones del sistema en iPhone.
