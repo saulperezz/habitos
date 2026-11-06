@@ -862,6 +862,74 @@
       background: var(--warn);
     }
 
+    /* ── NOTAS (diario semanal) ── */
+    .notas-barra { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .notas-boton {
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 99px;
+      border: 1px solid var(--surface2);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .notas-boton:active { background: var(--surface2); }
+    .notas-boton.principal { border-color: var(--accent); color: var(--accent); }
+    .semana-titulo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      padding: 4px 2px 6px;
+      border-bottom: 2px solid var(--accent);
+      margin-bottom: 4px;
+    }
+    .nota-dia { scroll-margin-top: var(--cabecera-h, 120px); }
+    .nota-fecha {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent2);
+      padding: 18px 2px 4px;
+    }
+    .nota-texto, .nota-cuerpo {
+      width: 100%;
+      font: inherit;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      padding: 6px 2px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .nota-cuerpo {
+      display: block;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      overflow: hidden;
+      min-height: 32px;
+    }
+    .nota-cuerpo::placeholder { color: var(--text-muted); }
+    .nota-cuerpo.editando-pasada { background: var(--surface); border-radius: 10px; padding: 8px 10px; }
+    .semanas-lista { display: flex; flex-direction: column; gap: 10px; }
+    .semana-item {
+      text-align: left;
+      width: 100%;
+      background: var(--surface);
+      border: none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+    .semana-item:active { background: var(--surface2); }
+    .semana-item strong { display: block; font-size: 15px; letter-spacing: .02em; }
+    .semana-item span { display: block; margin-top: 4px; font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fab[hidden] { display: none; }
+
     /* ── AVISO «ESTÁS EN SAFARI» ── */
     .banner-safari {
       display: flex;
@@ -1041,6 +1109,10 @@
   <div id="listaTareas"></div>
 </main>
 
+<main id="vistaNotas" hidden>
+  <div id="notasContenido"></div>
+</main>
+
 <button class="fab" type="button" id="fab" onclick="accionFab()" aria-label="Añadir hábito">+</button>
 
 <nav class="tabbar" role="tablist" aria-label="Secciones">
@@ -1049,6 +1121,9 @@
   </button>
   <button class="tab" type="button" role="tab" id="tabTareas" aria-selected="false" onclick="cambiarPestana('tareas')">
     <span class="tab-icon" aria-hidden="true">☰</span>Tareas
+  </button>
+  <button class="tab" type="button" role="tab" id="tabNotas" aria-selected="false" onclick="cambiarPestana('notas')">
+    <span class="tab-icon" aria-hidden="true">📝</span>Notas
   </button>
 </nav>
 
@@ -1328,17 +1403,25 @@
   let pestanaActiva = 'habitos';
 
   function cambiarPestana(p) {
+    if (pestanaActiva === 'notas' && p !== 'notas') guardarNotasPendientes();
     pestanaActiva = p;
     const esHabitos = p === 'habitos';
-    document.getElementById('vistaHabitos').hidden = !esHabitos;
-    document.getElementById('vistaTareas').hidden = esHabitos;
+    document.getElementById('vistaHabitos').hidden = p !== 'habitos';
+    document.getElementById('vistaTareas').hidden = p !== 'tareas';
+    document.getElementById('vistaNotas').hidden = p !== 'notas';
     document.getElementById('cabeceraHabitos').hidden = !esHabitos;
-    document.getElementById('tituloVista').textContent = esHabitos ? 'Mis Hábitos' : 'Mis Tareas';
-    document.getElementById('tabHabitos').setAttribute('aria-selected', String(esHabitos));
-    document.getElementById('tabTareas').setAttribute('aria-selected', String(!esHabitos));
-    document.getElementById('fab').setAttribute('aria-label', esHabitos ? 'Añadir hábito' : 'Añadir tarea');
-    if (!esHabitos) renderTareas();
+    document.getElementById('tituloVista').textContent =
+      p === 'habitos' ? 'Mis Hábitos' : p === 'tareas' ? 'Mis Tareas' : 'Mis Notas';
+    ['habitos', 'tareas', 'notas'].forEach(n => {
+      const id = 'tab' + n[0].toUpperCase() + n.slice(1);
+      document.getElementById(id).setAttribute('aria-selected', String(n === p));
+    });
+    const fab = document.getElementById('fab');
+    fab.hidden = p === 'notas';
+    fab.setAttribute('aria-label', esHabitos ? 'Añadir hábito' : 'Añadir tarea');
     window.scrollTo(0, 0);
+    if (p === 'tareas') renderTareas();
+    if (p === 'notas') { notasVista = { modo: 'actual' }; renderNotas(); }
   }
 
   function accionFab() {
@@ -1417,6 +1500,12 @@
     render();
     actualizarPuntoAjustes();
     if (pestanaActiva === 'tareas') renderTareas();
+    // Las notas no se repintan mientras se escribe; solo cuando cambia el día.
+    if (pestanaActiva === 'notas' && notasVista.modo === 'actual' && notasDiaPintado !== today()
+        && !(document.activeElement && document.activeElement.classList.contains('nota-cuerpo'))) {
+      guardarNotasPendientes();
+      renderNotas();
+    }
     if (hojaAbierta('calOverlay')) renderCalendar();
     if (hojaAbierta('diaOverlay')) renderDia();
   }
@@ -1985,7 +2074,7 @@
   }
 
   function actualizarPuntoAjustes() {
-    const hayDatos = load().length > 0 || leerTareas().length > 0;
+    const hayDatos = load().length > 0 || leerTareas().length > 0 || Object.keys(leerNotas()).length > 0;
     document.getElementById('ajustesBtn').classList.toggle('con-punto', hayDatos && copiaAtrasada());
   }
 
@@ -2013,8 +2102,8 @@
     const p = copiaEstado.pendiente;
     if (p) {
       html += `<div class="copia-confirmar" role="alert">
-          El archivo tiene <strong>${p.datos.habits.length} hábito${p.datos.habits.length === 1 ? '' : 's'}</strong> y
-          <strong>${p.datos.habitos_tareas.length} tarea${p.datos.habitos_tareas.length === 1 ? '' : 's'}</strong>${p.fecha ? ` (copia del ${escHtml(p.fecha)})` : ''}.
+          El archivo tiene <strong>${p.datos.habits.length} hábito${p.datos.habits.length === 1 ? '' : 's'}</strong>${p.notas ? ',' : ' y'}
+          <strong>${p.datos.habitos_tareas.length} tarea${p.datos.habitos_tareas.length === 1 ? '' : 's'}</strong>${p.notas ? ` y <strong>${Object.keys(p.notas).length} día${Object.keys(p.notas).length === 1 ? '' : 's'} de notas</strong>` : ''}${p.fecha ? ` (copia del ${escHtml(p.fecha)})` : ''}.
           <br><strong>Reemplazará</strong> todos los datos actuales de este dispositivo.
           <div class="copia-acciones">
             <button class="btn btn-secondary" type="button" onclick="cancelarImportacion()">Cancelar</button>
@@ -2038,6 +2127,7 @@
       datos: {
         habits: load(),
         habitos_tareas: leerTareas(),
+        habitos_notas: leerNotas(),
         habitos_repaso: leerRepaso(),
         habitos_config: { repasoActivo: cfg.repasoActivo, hora: cfg.hora },
         habitos_esquema: leerJSON('habitos_esquema', COPIA_VERSION)
@@ -2096,10 +2186,20 @@
     const habitsOk = d.habits.every(h => h && typeof h === 'object' && typeof h.name === 'string' && (h.history === undefined || (typeof h.history === 'object' && h.history !== null)));
     const tareasOk = d.habitos_tareas.every(t => t && typeof t === 'object' && typeof t.titulo === 'string');
     if (!habitsOk || !tareasOk) return { error: 'La copia está incompleta o dañada.' };
+    // Las notas son opcionales (las copias antiguas no las tienen); se ignoran las entradas no válidas.
+    let notas = null;
+    if (d.habitos_notas && typeof d.habitos_notas === 'object' && !Array.isArray(d.habitos_notas)) {
+      notas = {};
+      Object.entries(d.habitos_notas).forEach(([clave, n]) => {
+        if (RE_FECHA.test(clave) && n && typeof n.texto === 'string' && n.texto.trim()) {
+          notas[clave] = { texto: n.texto, editado: typeof n.editado === 'string' ? n.editado : null };
+        }
+      });
+    }
     let fecha = '';
     const f = new Date(obj.exportado);
     if (!isNaN(f)) fecha = f.toLocaleDateString('es-ES', { timeZone: ZONA, day: 'numeric', month: 'long', year: 'numeric' });
-    return { datos: d, fecha };
+    return { datos: d, notas, fecha };
   }
 
   function leerArchivoCopia(input) {
@@ -2134,6 +2234,7 @@
     const d = p.datos;
     save(d.habits.map(h => ({ ...h, history: h.history || {} })));
     guardarTareas(d.habitos_tareas);
+    if (p.notas) { notasPendientes.clear(); clearTimeout(temporizadorNotas); guardarNotas(p.notas); } // copia antigua sin notas: se conservan las actuales
     guardarRepaso(d.habitos_repaso && typeof d.habitos_repaso === 'object' ? d.habitos_repaso : null);
 
     // Solo se copian las preferencias; el estado de avisos es propio de cada dispositivo.
@@ -2151,6 +2252,7 @@
     copiaEstado = { pendiente: null, mensaje: 'Datos importados ✓', tipo: 'ok' };
     renderAjustes();
     renderTodo();
+    if (pestanaActiva === 'notas') { notasVista = { modo: 'actual' }; renderNotas(); }
     actualizarPuntoAjustes();
     if (cfg.avisos === 'concedido' && cfg.hora !== horaAntes) {
       suscribirYRegistrar().catch(() => { errorAvisos = MSG_ERROR_AVISOS; renderAjustes(); });
@@ -2176,6 +2278,191 @@
     document.getElementById('bannerSafari').hidden = true;
     try { sessionStorage.setItem('banner_safari_cerrado', '1'); } catch {}
   }
+
+  // ══════════════════════════════════════════════
+  // ── NOTAS (diario por semanas, de lunes a domingo) ──
+  // ══════════════════════════════════════════════
+  // Datos: habitos_notas = { 'AAAA-MM-DD': { texto, editado } }. Un día sin texto no se guarda.
+
+  let notasVista = { modo: 'actual' };   // 'actual' | 'lista' | { modo: 'semana', lunes, editando }
+  let notasDiaPintado = null;
+  const notasPendientes = new Map();     // clave de día → texto aún sin guardar
+  let temporizadorNotas = null;
+
+  function leerNotas() {
+    const n = leerJSON('habitos_notas', {});
+    return n && typeof n === 'object' && !Array.isArray(n) ? n : {};
+  }
+  function guardarNotas(n) { guardarJSON('habitos_notas', n); }
+
+  function lunesDe(clave) {
+    const dia = fechaDeClave(clave).getUTCDay();   // 0 = domingo
+    return sumarDias(clave, -((dia + 6) % 7));
+  }
+
+  function fechaNumerica(clave) {
+    const [y, m, d] = clave.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function textoNota(notas, clave) {
+    if (notasPendientes.has(clave)) return notasPendientes.get(clave);
+    const n = notas[clave];
+    return n && typeof n.texto === 'string' ? n.texto : '';
+  }
+
+  function guardarNotasPendientes() {
+    clearTimeout(temporizadorNotas);
+    if (!notasPendientes.size) return;
+    const notas = leerNotas();
+    const ahora = new Date().toISOString();
+    notasPendientes.forEach((texto, clave) => {
+      if (texto.trim()) notas[clave] = { texto, editado: ahora };
+      else delete notas[clave];
+    });
+    notasPendientes.clear();
+    guardarNotas(notas);
+    actualizarPuntoAjustes();
+  }
+
+  function alEscribirNota(el) {
+    ajustarAltura(el);
+    notasPendientes.set(el.dataset.dia, el.value);
+    clearTimeout(temporizadorNotas);
+    temporizadorNotas = setTimeout(guardarNotasPendientes, 400);
+  }
+
+  function ajustarAltura(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  // Semanas anteriores a la actual que tienen algo escrito, de la más reciente a la más antigua.
+  function semanasAnteriores(notas = leerNotas()) {
+    const actual = lunesDe(today());
+    const semanas = new Map();
+    Object.keys(notas).sort().forEach(clave => {
+      if (!RE_FECHA.test(clave) || !textoNota(notas, clave).trim()) return;
+      const lunes = lunesDe(clave);
+      if (lunes >= actual) return;
+      if (!semanas.has(lunes)) semanas.set(lunes, []);
+      semanas.get(lunes).push(clave);
+    });
+    return [...semanas.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }
+
+  // Bloque de un día: el lunes va directamente bajo el título de la semana, sin subtítulo.
+  function bloqueDia(clave, lunes, texto, { editable, esHoy, pasada }) {
+    const fecha = clave === lunes ? '' : `<h3 class="nota-fecha">${fechaNumerica(clave)}</h3>`;
+    const cuerpo = editable
+      ? `<textarea class="nota-cuerpo${pasada ? ' editando-pasada' : ''}${esHoy ? ' nota-hoy' : ''}" data-dia="${clave}"
+           aria-label="Nota del ${fechaNumerica(clave)}" placeholder="${esHoy ? 'Escribe aquí…' : ''}"
+           oninput="alEscribirNota(this)" onblur="guardarNotasPendientes()">${escHtml(texto)}</textarea>`
+      : `<div class="nota-texto">${escHtml(texto)}</div>`;
+    return `<section class="nota-dia" id="nota-${clave}">${fecha}${cuerpo}</section>`;
+  }
+
+  function renderNotas() {
+    const cont = document.getElementById('notasContenido');
+    const notas = leerNotas();
+    const hoy = today();
+    const altoCabecera = document.querySelector('header').offsetHeight;
+    document.documentElement.style.setProperty('--cabecera-h', (altoCabecera + 8) + 'px');
+
+    if (notasVista.modo === 'lista') {
+      const semanas = semanasAnteriores(notas);
+      let html = `<div class="notas-barra">
+          <button class="notas-boton" type="button" onclick="volverSemanaActual()">← Esta semana</button>
+        </div>
+        <h2 class="semana-titulo">Notas anteriores</h2>`;
+      if (!semanas.length) {
+        html += '<p class="texto-suave">Aún no hay semanas anteriores con notas.</p>';
+      } else {
+        html += '<div class="semanas-lista">' + semanas.map(([lunes, dias]) => {
+          const inicio = textoNota(notas, dias[0]).trim().replace(/\s+/g, ' ').slice(0, 80);
+          return `<button class="semana-item" type="button" onclick="abrirSemana('${lunes}')">
+              <strong>SEMANA ${fechaNumerica(lunes)}</strong>
+              <span>${dias.length} día${dias.length === 1 ? '' : 's'} escrito${dias.length === 1 ? '' : 's'} · ${escHtml(inicio)}</span>
+            </button>`;
+        }).join('') + '</div>';
+      }
+      cont.innerHTML = html;
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (notasVista.modo === 'semana') {
+      const { lunes, editando } = notasVista;
+      let html = `<div class="notas-barra">
+          <button class="notas-boton" type="button" onclick="abrirListaSemanas()">← Notas anteriores</button>
+          <button class="notas-boton${editando ? ' principal' : ''}" type="button" onclick="alternarEdicionSemana()">${editando ? 'Hecho' : 'Editar'}</button>
+        </div>
+        <h2 class="semana-titulo">SEMANA ${fechaNumerica(lunes)}</h2>`;
+      for (let k = 0; k < 7; k++) {
+        const clave = sumarDias(lunes, k);
+        const texto = textoNota(notas, clave);
+        if (!texto.trim()) continue;   // en el archivo los días vacíos se ocultan
+        html += bloqueDia(clave, lunes, texto, { editable: editando, esHoy: false, pasada: true });
+      }
+      cont.innerHTML = html;
+      cont.querySelectorAll('.nota-cuerpo').forEach(ajustarAltura);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    // Semana actual: del lunes hasta hoy. Los días anteriores sin texto se ocultan.
+    const lunes = lunesDe(hoy);
+    let html = `<div class="notas-barra">
+        <button class="notas-boton" type="button" onclick="abrirListaSemanas()">Ver notas anteriores</button>
+      </div>
+      <h2 class="semana-titulo">SEMANA ${fechaNumerica(lunes)}</h2>`;
+    for (let clave = lunes; clave <= hoy; clave = sumarDias(clave, 1)) {
+      const texto = textoNota(notas, clave);
+      const esHoy = clave === hoy;
+      if (!esHoy && !texto.trim()) continue;
+      html += bloqueDia(clave, lunes, texto, { editable: true, esHoy, pasada: false });
+    }
+    cont.innerHTML = html;
+    notasDiaPintado = hoy;
+
+    cont.querySelectorAll('.nota-cuerpo').forEach(ajustarAltura);
+    // El día de hoy ocupa al menos el resto de la pantalla, para escribir sin límites.
+    const hoyEl = cont.querySelector('.nota-hoy');
+    const libre = window.innerHeight - altoCabecera - 64 - 70;
+    hoyEl.style.minHeight = Math.max(160, libre) + 'px';
+    ajustarAltura(hoyEl);
+
+    // Hoy queda arriba del todo; desplazando hacia arriba se ven los días anteriores.
+    if (hoy === lunes) window.scrollTo(0, 0);
+    else document.getElementById('nota-' + hoy).scrollIntoView({ block: 'start' });
+  }
+
+  function abrirListaSemanas() {
+    guardarNotasPendientes();
+    notasVista = { modo: 'lista' };
+    renderNotas();
+  }
+
+  function abrirSemana(lunes) {
+    notasVista = { modo: 'semana', lunes, editando: false };
+    renderNotas();
+  }
+
+  function alternarEdicionSemana() {
+    guardarNotasPendientes();
+    notasVista.editando = !notasVista.editando;
+    renderNotas();
+  }
+
+  function volverSemanaActual() {
+    guardarNotasPendientes();
+    notasVista = { modo: 'actual' };
+    renderNotas();
+  }
+
+  // Que no se pierda lo último escrito si la app se cierra o pasa a segundo plano.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') guardarNotasPendientes(); });
+  window.addEventListener('pagehide', guardarNotasPendientes);
 
   // ══════════════════════════════════════════════
   // ── TAREAS ──
