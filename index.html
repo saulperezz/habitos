@@ -25,6 +25,8 @@
       --done: #22c55e;
       --danger: #ef4444;
       --warn: #fb923c;
+      --banner-bg: #2a1d10;
+      --banner-text: #fdba74;
       --radius: 16px;
       --tabbar-h: 64px;
     }
@@ -841,6 +843,49 @@
       font-size: 13px;
     }
     .aviso-ok { color: var(--done); font-weight: 600; }
+    .aviso-warn { color: var(--warn); font-weight: 600; }
+
+    /* ── COPIA DE SEGURIDAD ── */
+    .ajustes-subtitulo { font-size: 17px; font-weight: 700; margin-top: 28px; }
+    .copia-acciones { display: flex; gap: 10px; margin-top: 12px; }
+    .copia-acciones .btn { margin-top: 0; }
+    .avisos-caja .btn-secondary { background: var(--surface); }
+    .copia-confirmar { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface); }
+
+    .icon-btn { position: relative; }
+    .icon-btn.con-punto::after {
+      content: '';
+      position: absolute;
+      top: 8px; right: 8px;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+
+    /* ── AVISO «ESTÁS EN SAFARI» ── */
+    .banner-safari {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--banner-bg);
+      color: var(--banner-text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .banner-safari[hidden] { display: none; }
+    .banner-safari p { flex: 1; }
+    .banner-safari button {
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+    .banner-safari .enlace { text-decoration: underline; font-weight: 600; padding: 0; }
+    .banner-safari .cerrar { min-width: 44px; min-height: 44px; margin: -10px -12px -10px 0; font-size: 16px; }
 
     /* ── REPASO (pantalla completa) ── */
     #repaso {
@@ -968,7 +1013,7 @@
   <div class="header-top">
     <h1 id="tituloVista">Mis Hábitos</h1>
     <div class="header-actions">
-      <button class="icon-btn" type="button" onclick="abrirAjustes()" aria-label="Ajustes del recordatorio" title="Ajustes del recordatorio">🔔</button>
+      <button class="icon-btn" type="button" id="ajustesBtn" onclick="abrirAjustes()" aria-label="Ajustes" title="Ajustes">🔔</button>
       <button class="date-btn" type="button" id="dateLabel" onclick="openCalendar()" aria-label="Abrir calendario"></button>
     </div>
   </div>
@@ -980,6 +1025,11 @@
       <div class="progress-label" id="progressLabel">0 de 0 completados</div>
       <button class="repaso-btn" type="button" id="repasoBtn" onclick="iniciarRepasoManual()">Hacer repaso</button>
     </div>
+  </div>
+  <div class="banner-safari" id="bannerSafari" role="status" hidden>
+    <p>Estás en Safari: estos datos son <strong>distintos</strong> de los de la app de tu pantalla de inicio. Ábrela desde el icono.
+      <button class="enlace" type="button" onclick="abrirAjustes('copia')">Pasar mis datos a la app</button></p>
+    <button class="cerrar" type="button" aria-label="Cerrar aviso" onclick="cerrarBannerSafari()">✕</button>
   </div>
 </header>
 
@@ -1115,6 +1165,10 @@
       <input class="campo" type="time" id="ajusteHora" onchange="cambiarHora(this.value)" />
     </div>
     <div class="avisos-caja" id="avisosCaja"></div>
+
+    <h3 class="ajustes-subtitulo" id="copiaTitulo">Copia de seguridad</h3>
+    <div class="avisos-caja" id="copiaCaja"></div>
+    <input type="file" id="copiaArchivo" accept="application/json,.json" hidden onchange="leerArchivoCopia(this)" />
   </div>
 </div>
 
@@ -1361,6 +1415,7 @@
 
   function renderTodo() {
     render();
+    actualizarPuntoAjustes();
     if (pestanaActiva === 'tareas') renderTareas();
     if (hojaAbierta('calOverlay')) renderCalendar();
     if (hojaAbierta('diaOverlay')) renderDia();
@@ -1722,10 +1777,14 @@
     return true;
   }
 
-  function abrirAjustes() {
+  function abrirAjustes(seccion) {
     errorAvisos = '';
+    copiaEstado = { pendiente: null, mensaje: '', tipo: '' };
     renderAjustes();
     abrirHoja('ajustesOverlay');
+    if (seccion === 'copia') {
+      setTimeout(() => document.getElementById('copiaTitulo').scrollIntoView({ behavior: 'smooth', block: 'start' }), 260);
+    }
   }
 
   function renderAjustes() {
@@ -1751,6 +1810,7 @@
     }
     if (errorAvisos) html += `<div class="aviso-error" role="alert">${escHtml(errorAvisos)}</div>`;
     caja.innerHTML = html;
+    renderCopia();
   }
 
   function cambiarRepasoActivo(activo) {
@@ -1895,6 +1955,226 @@
       const sub = await reg.pushManager.getSubscription();
       if (!sub || sub.endpoint !== cfg.endpointRegistrado) await suscribirYRegistrar();
     } catch (e) { console.warn(e); }
+  }
+
+  // ══════════════════════════════════════════════
+  // ── COPIA DE SEGURIDAD Y PROTECCIÓN DE DATOS ──
+  // ══════════════════════════════════════════════
+  // El archivo lo elige siempre el usuario (exportar / importar); nada sale del dispositivo.
+
+  const COPIA_APP = 'mis-habitos';
+  const COPIA_VERSION = 2;
+  const DIAS_AVISO_COPIA = 7;
+
+  let copiaEstado = { pendiente: null, mensaje: '', tipo: '' };
+  let datosPersistentes = null; // true / false / null (desconocido)
+
+  function enSafariSinInstalar() {
+    return esIOS() && navigator.standalone !== true;
+  }
+
+  function diasDesdeCopia(cfg = leerConfig()) {
+    if (!cfg.ultimaCopia) return null;
+    const ms = Date.now() - new Date(cfg.ultimaCopia).getTime();
+    return Number.isFinite(ms) ? Math.max(0, Math.floor(ms / 86400000)) : null;
+  }
+
+  function copiaAtrasada() {
+    const d = diasDesdeCopia();
+    return d === null || d >= DIAS_AVISO_COPIA;
+  }
+
+  function actualizarPuntoAjustes() {
+    const hayDatos = load().length > 0 || leerTareas().length > 0;
+    document.getElementById('ajustesBtn').classList.toggle('con-punto', hayDatos && copiaAtrasada());
+  }
+
+  function renderCopia() {
+    const caja = document.getElementById('copiaCaja');
+    const d = diasDesdeCopia();
+    let html = '';
+
+    if (datosPersistentes === true) html += '<span class="aviso-ok">Datos protegidos ✓</span><br>';
+    else if (datosPersistentes === false) html += '<span class="aviso-warn">El sistema podría borrar tus datos: haz copias.</span><br>';
+
+    if (enSafariSinInstalar()) {
+      html += 'Estás en <strong>Safari</strong>. Exporta aquí tus datos y luego impórtalos desde la app de la pantalla de inicio.<br>';
+    }
+
+    html += d === null ? 'Aún no has hecho ninguna copia.'
+      : d === 0 ? 'Última copia: hoy.'
+      : `Última copia: hace ${d} día${d > 1 ? 's' : ''}.`;
+
+    html += `<div class="copia-acciones">
+        <button class="btn btn-primary" type="button" onclick="exportarDatos()">Exportar</button>
+        <button class="btn btn-secondary" type="button" onclick="document.getElementById('copiaArchivo').click()">Importar</button>
+      </div>`;
+
+    const p = copiaEstado.pendiente;
+    if (p) {
+      html += `<div class="copia-confirmar" role="alert">
+          El archivo tiene <strong>${p.datos.habits.length} hábito${p.datos.habits.length === 1 ? '' : 's'}</strong> y
+          <strong>${p.datos.habitos_tareas.length} tarea${p.datos.habitos_tareas.length === 1 ? '' : 's'}</strong>${p.fecha ? ` (copia del ${escHtml(p.fecha)})` : ''}.
+          <br><strong>Reemplazará</strong> todos los datos actuales de este dispositivo.
+          <div class="copia-acciones">
+            <button class="btn btn-secondary" type="button" onclick="cancelarImportacion()">Cancelar</button>
+            <button class="btn btn-danger" type="button" onclick="confirmarImportacion()">Reemplazar</button>
+          </div>
+        </div>`;
+    }
+    if (copiaEstado.mensaje) {
+      const clase = copiaEstado.tipo === 'ok' ? 'aviso-ok' : 'aviso-error';
+      html += `<div class="${clase}" role="${copiaEstado.tipo === 'ok' ? 'status' : 'alert'}" style="margin-top:12px">${escHtml(copiaEstado.mensaje)}</div>`;
+    }
+    caja.innerHTML = html;
+  }
+
+  function construirCopia() {
+    const cfg = leerConfig();
+    return {
+      app: COPIA_APP,
+      version: COPIA_VERSION,
+      exportado: new Date().toISOString(),
+      datos: {
+        habits: load(),
+        habitos_tareas: leerTareas(),
+        habitos_repaso: leerRepaso(),
+        habitos_config: { repasoActivo: cfg.repasoActivo, hora: cfg.hora },
+        habitos_esquema: leerJSON('habitos_esquema', COPIA_VERSION)
+      }
+    };
+  }
+
+  function marcarCopiaHecha() {
+    const cfg = leerConfig();
+    cfg.ultimaCopia = new Date().toISOString();
+    guardarConfig(cfg);
+    actualizarPuntoAjustes();
+  }
+
+  async function exportarDatos() {
+    copiaEstado = { pendiente: null, mensaje: '', tipo: '' };
+    const nombre = `mis-habitos-${today()}.json`;
+    const texto = JSON.stringify(construirCopia(), null, 2);
+    try {
+      const archivo = new File([texto], nombre, { type: 'application/json' });
+      // En iPhone la hoja de compartir permite «Guardar en Archivos» o AirDrop.
+      if (esIOS() && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], title: 'Copia de Mis Hábitos' });
+        } catch (e) {
+          if (e && e.name === 'AbortError') { renderCopia(); return; } // el usuario canceló
+          throw e;
+        }
+      } else {
+        const url = URL.createObjectURL(new Blob([texto], { type: 'application/json' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+      marcarCopiaHecha();
+      copiaEstado.mensaje = 'Copia exportada ✓ Guárdala en un lugar seguro (Archivos, iCloud…).';
+      copiaEstado.tipo = 'ok';
+    } catch (e) {
+      console.warn(e);
+      copiaEstado.mensaje = 'No se pudo exportar la copia. Inténtalo de nuevo.';
+      copiaEstado.tipo = 'error';
+    }
+    renderCopia();
+  }
+
+  // Devuelve { datos, fecha } si el contenido es una copia válida, o { error }.
+  function validarCopia(obj) {
+    if (!obj || typeof obj !== 'object' || obj.app !== COPIA_APP) return { error: 'Este archivo no es una copia de Mis Hábitos.' };
+    if (typeof obj.version !== 'number' || obj.version > COPIA_VERSION) return { error: 'La copia es de una versión más nueva de la app. Actualiza la app e inténtalo de nuevo.' };
+    const d = obj.datos;
+    if (!d || !Array.isArray(d.habits) || !Array.isArray(d.habitos_tareas)) return { error: 'La copia está incompleta o dañada.' };
+    const habitsOk = d.habits.every(h => h && typeof h === 'object' && typeof h.name === 'string' && (h.history === undefined || (typeof h.history === 'object' && h.history !== null)));
+    const tareasOk = d.habitos_tareas.every(t => t && typeof t === 'object' && typeof t.titulo === 'string');
+    if (!habitsOk || !tareasOk) return { error: 'La copia está incompleta o dañada.' };
+    let fecha = '';
+    const f = new Date(obj.exportado);
+    if (!isNaN(f)) fecha = f.toLocaleDateString('es-ES', { timeZone: ZONA, day: 'numeric', month: 'long', year: 'numeric' });
+    return { datos: d, fecha };
+  }
+
+  function leerArchivoCopia(input) {
+    const archivo = input.files && input.files[0];
+    input.value = ''; // permite volver a elegir el mismo archivo
+    if (!archivo) return;
+    copiaEstado = { pendiente: null, mensaje: '', tipo: '' };
+    const lector = new FileReader();
+    lector.onload = () => {
+      let obj;
+      try { obj = JSON.parse(lector.result); } catch { obj = null; }
+      const r = validarCopia(obj);
+      if (r.error) copiaEstado = { pendiente: null, mensaje: r.error, tipo: 'error' };
+      else copiaEstado.pendiente = r;
+      renderCopia();
+    };
+    lector.onerror = () => {
+      copiaEstado = { pendiente: null, mensaje: 'No se pudo leer el archivo.', tipo: 'error' };
+      renderCopia();
+    };
+    lector.readAsText(archivo);
+  }
+
+  function cancelarImportacion() {
+    copiaEstado = { pendiente: null, mensaje: '', tipo: '' };
+    renderCopia();
+  }
+
+  function confirmarImportacion() {
+    const p = copiaEstado.pendiente;
+    if (!p) return;
+    const d = p.datos;
+    save(d.habits.map(h => ({ ...h, history: h.history || {} })));
+    guardarTareas(d.habitos_tareas);
+    guardarRepaso(d.habitos_repaso && typeof d.habitos_repaso === 'object' ? d.habitos_repaso : null);
+
+    // Solo se copian las preferencias; el estado de avisos es propio de cada dispositivo.
+    const cfg = leerConfig();
+    const horaAntes = cfg.hora;
+    const c = d.habitos_config || {};
+    if (typeof c.repasoActivo === 'boolean') cfg.repasoActivo = c.repasoActivo;
+    if (typeof c.hora === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(c.hora)) cfg.hora = c.hora;
+    cfg.ultimaCopia = new Date().toISOString(); // los datos actuales ya están en un archivo
+    guardarConfig(cfg);
+
+    if (typeof d.habitos_esquema === 'number') guardarJSON('habitos_esquema', Math.min(d.habitos_esquema, COPIA_VERSION));
+    migrar();
+
+    copiaEstado = { pendiente: null, mensaje: 'Datos importados ✓', tipo: 'ok' };
+    renderAjustes();
+    renderTodo();
+    actualizarPuntoAjustes();
+    if (cfg.avisos === 'concedido' && cfg.hora !== horaAntes) {
+      suscribirYRegistrar().catch(() => { errorAvisos = MSG_ERROR_AVISOS; renderAjustes(); });
+    }
+  }
+
+  // Pide al navegador que no borre los datos de la app aunque falte espacio.
+  async function protegerDatos() {
+    try {
+      if (!navigator.storage || !navigator.storage.persist) return;
+      datosPersistentes = (await navigator.storage.persisted()) || (await navigator.storage.persist());
+    } catch { datosPersistentes = null; }
+    if (hojaAbierta('ajustesOverlay')) renderCopia();
+  }
+
+  function mostrarBannerSafari() {
+    let cerrado = false;
+    try { cerrado = sessionStorage.getItem('banner_safari_cerrado') === '1'; } catch {}
+    document.getElementById('bannerSafari').hidden = !enSafariSinInstalar() || cerrado;
+  }
+
+  function cerrarBannerSafari() {
+    document.getElementById('bannerSafari').hidden = true;
+    try { sessionStorage.setItem('banner_safari_cerrado', '1'); } catch {}
   }
 
   // ══════════════════════════════════════════════
@@ -2250,6 +2530,9 @@
       comprobarOfertaRepaso();
     }
     sincronizarAvisos();
+    mostrarBannerSafari();
+    actualizarPuntoAjustes();
+    protegerDatos();
   })();
 
   // Refresca vencidas y la fecha de la cabecera cada minuto.

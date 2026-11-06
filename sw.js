@@ -1,11 +1,62 @@
-// Service worker mínimo de Mis Hábitos.
-// Solo muestra el aviso diario del repaso; no guarda nada en caché.
-// El texto es fijo y genérico: nunca incluye datos del usuario.
+// Service worker de Mis Hábitos.
+// 1) Guarda en caché los archivos de la app para que abra sin conexión.
+//    Estrategia «red primero»: si hay internet se carga siempre la última versión publicada;
+//    si no, se usa la copia guardada. Los datos del usuario (localStorage) nunca pasan por aquí.
+// 2) Muestra el aviso diario del repaso. El texto es fijo y genérico: nunca incluye datos del usuario.
 
-self.addEventListener('install', () => self.skipWaiting());
+const CACHE = 'habitos-v1';
+const ARCHIVOS = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './iconos/icono-192.png',
+  './iconos/icono-512.png',
+  './iconos/apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(ARCHIVOS);
+    } catch (e) {
+      // Sin conexión al instalar: se rellenará la caché en la próxima visita con red.
+    }
+    await self.skipWaiting();
+  })());
+});
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    const nombres = await caches.keys();
+    await Promise.all(nombres.filter(n => n.startsWith('habitos-') && n !== CACHE).map(n => caches.delete(n)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  // Solo GET del mismo origen; las llamadas al servicio de avisos (otro origen) no se tocan.
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    try {
+      const resp = await fetch(req, { cache: 'no-cache' });
+      if (resp && resp.ok && resp.type === 'basic') {
+        cache.put(req.mode === 'navigate' ? './' : req, resp.clone());
+      }
+      return resp;
+    } catch (e) {
+      const guardada = await cache.match(req.mode === 'navigate' ? './' : req, { ignoreSearch: true });
+      if (guardada) return guardada;
+      if (req.mode === 'navigate') {
+        const inicio = await cache.match('./index.html');
+        if (inicio) return inicio;
+      }
+      throw e;
+    }
+  })());
 });
 
 self.addEventListener('push', (event) => {
