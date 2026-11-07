@@ -1,5 +1,9 @@
 # Constitución de Habitos
 
+> **Ámbito**: esta constitución rige la app personal de la raíz (`index.html`, `sw.js`,
+> `notificaciones/`). La versión multiusuario en `saas/` es un producto aparte con su propia
+> arquitectura (cuentas, servidor y compilación); ver `saas/README.md`.
+
 ## Principios fundamentales
 
 ### I. Cliente de un solo archivo y sin compilación
