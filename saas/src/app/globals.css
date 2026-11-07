@@ -1,0 +1,99 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #efede7;
+  --text: #1c1b18;
+  --muted: #6b6860;
+  --border: #e3e0d8;
+  --accent: #2f7d5b;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcefe5;
+  --danger: #b23b2e;
+  --danger-soft: #f8e1dd;
+  --warn: #9a6200;
+  --radius: 14px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121311;
+    --surface: #1b1d1a;
+    --surface-2: #252824;
+    --text: #ecebe6;
+    --muted: #9c9a92;
+    --border: #2f322d;
+    --accent: #5cc493;
+    --accent-ink: #0b1f15;
+    --accent-soft: #1f3a2d;
+    --danger: #f08a7d;
+    --danger-soft: #3b211d;
+    --warn: #e0a84a;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --radius-card: var(--radius);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@utility card {
+    @apply rounded-card border border-border bg-surface p-4;
+}
+
+@utility btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors disabled:opacity-50;
+}
+
+@utility btn-primary {
+    @apply btn bg-accent text-accent-ink hover:brightness-110;
+}
+
+@utility btn-ghost {
+    @apply btn border border-border bg-surface text-text hover:bg-surface-2;
+}
+
+@utility btn-danger {
+    @apply btn bg-danger-soft text-danger hover:brightness-95;
+}
+
+@utility input {
+    @apply min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-base text-text outline-none placeholder:text-muted focus:border-accent;
+}
+
+@utility label {
+    @apply mb-1 block text-xs font-semibold tracking-wide text-muted uppercase;
+}
+
+@utility error {
+    @apply rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
