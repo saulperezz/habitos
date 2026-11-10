@@ -172,7 +172,7 @@ y comprobar › desactivada (escenario 9 de `quickstart.md`).
 - [X] T035 [P] Revisar en 360 px y 430 px, en claro y oscuro, que `/notes` en todas sus vistas no tenga scroll horizontal y que respete las zonas seguras de iOS. Ajustar las clases en `saas/src/app/(app)/notes/*.tsx` usando solo variables CSS de `saas/src/app/globals.css`
 - [X] T036 [P] Actualizar `saas/README.md` (sección de la API v1): documentar `baseUpdatedAt` y `deviceId` en `PUT /api/v1/notes/{day}` y la respuesta `{ outcome, note }`, según `specs/002-diario-semanal/contracts/notes-api.md`
 - [X] T037 Ejecutar en `saas/` `npm run lint && npm run typecheck && npm test && npm run build` y corregir hasta que todo pase
-- [ ] T038 Aplicar la migración `20261110000000_notes_save_conflicts.sql` al proyecto de Supabase de la vista previa, abrir la URL de vista previa de Vercel de la rama en el móvil y recorrer los 16 escenarios de `specs/002-diario-semanal/quickstart.md`
+- [x] T038 Aplicar la migración `20261110000000_notes_save_conflicts.sql` al proyecto de Supabase de la vista previa, abrir la URL de vista previa de Vercel de la rama en el móvil y recorrer los 16 escenarios de `specs/002-diario-semanal/quickstart.md`
 - [X] T039 Abrir el PR de `002-diario-semanal` a `master` con el resumen de cambios, la migración nueva y el resultado de `quickstart.md`
 
 ---
