@@ -43,11 +43,16 @@ Respuestas:
 
 | Caso | Estado | Cuerpo |
 |---|---|---|
-| `saved` / `merged` / `kept` | 200 | `{ "data": Note }` |
-| `deleted` | 200 | `{ "data": null }` |
-| `too_long` | 409 | `{ "error": { "code": "conflict", "message": "La nota cambió en otro dispositivo y juntar ambos textos supera 10.000 caracteres." } }` |
+| Sin `baseUpdatedAt` | 200 | `{ "data": Note }` o `{ "data": null }` si se borró (sin cambios respecto a la versión anterior) |
+| Con `baseUpdatedAt` | 200 | `{ "data": { "outcome", "note" } }`: `outcome` ∈ `saved`, `merged`, `kept`, `deleted`, `too_long`; `note`: `Note` o `null` |
 | Validación | 400 | `{ "error": { "code": "bad_request", … } }` |
 | Sin sesión | 401 | `{ "error": { "code": "unauthorized", … } }` |
+
+Con `baseUpdatedAt`, `outcome` dice qué ha pasado: `saved` (guardada), `deleted` (borrada,
+`note` nulo), `merged` (cambió en otro dispositivo y se han unido los textos), `kept` (cambió en otro
+dispositivo y se conserva esa versión) o `too_long` (**no se ha guardado nada**: la unión superaría
+10 000 caracteres; `note` es la versión actual del servidor). El diario usa `outcome` para mostrar
+el aviso correcto también tras el envío al cerrar la app.
 
 Autenticación: cookie de sesión (la usa el envío `keepalive` del propio diario al cerrar) o
 `Authorization: Bearer`. `GET /api/v1/notes/{day}` no cambia.

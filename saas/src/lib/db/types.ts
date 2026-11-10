@@ -100,9 +100,9 @@ export type Database = {
         Relationships: [];
       };
       notes: {
-        Row: { user_id: string; day: string; body: string } & Timestamps;
-        Insert: { user_id?: string; day: string; body: string };
-        Update: { body?: string };
+        Row: { user_id: string; day: string; body: string; last_device: string | null } & Timestamps;
+        Insert: { user_id?: string; day: string; body: string; last_device?: string | null };
+        Update: { body?: string; last_device?: string | null };
         Relationships: [];
       };
       review_sessions: {
@@ -134,6 +134,10 @@ export type Database = {
         Args: { p_day: string; p_habit_id: string; p_answer: 'yes' | 'no' };
         Returns: Json;
       };
+      save_note: {
+        Args: { p_day: string; p_body: string; p_base: string | null; p_device: string | null };
+        Returns: Json;
+      };
       delete_account: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
@@ -156,4 +160,6 @@ export type Habit = Row<'habits'>;
 export type HabitLog = Row<'habit_logs'>;
 export type Task = Row<'tasks'>;
 export type Note = Row<'notes'>;
+export type SaveOutcome = 'saved' | 'deleted' | 'merged' | 'kept' | 'too_long';
+export type SaveResult = { outcome: SaveOutcome; note: Note | null };
 export type ReviewSession = Row<'review_sessions'>;

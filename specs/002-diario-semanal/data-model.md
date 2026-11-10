@@ -16,7 +16,7 @@ La migración añade la columna nullable, la función `save_note` y redefine `im
 `do update`); no modifica ni reescribe filas existentes.
 
 **Invariante**: `last_device = X` solo si la última escritura de la fila la hizo el dispositivo X
-mediante `save_note`. Cualquier otra escritura lo deja nulo, por lo que un reintento posterior de
+mediante `save_note` sin conflicto (`saved`); una unión (`merged`) también lo deja nulo. Cualquier otra escritura lo deja nulo, por lo que un reintento posterior de
 X con una base antigua se detecta como conflicto y nunca sobrescribe en silencio.
 
 ### Función `public.save_note(p_day date, p_body text, p_base timestamptz, p_device uuid)`
@@ -37,8 +37,9 @@ texto normalizado: vacío ⇔ btrim(p_body) = ''
     │   ├─ vacío        → DELETE → deleted, note = null
     │   └─ con texto    → UPDATE body, last_device = p_device → saved
     └─ conflicto
-        ├─ vacío ó p_body = body actual → nada que unir → kept, note = fila actual (sin cambios)
-        ├─ unión ≤ 10 000 → UPDATE body = body || '\n\n— — —\n\n' || p_body, last_device = p_device → merged
+        ├─ vacío ó body actual contiene p_body → nada que unir → kept, note = fila actual (sin cambios)
+        ├─ unión ≤ 10 000 → UPDATE body = body || '\n\n— — —\n\n' || p_body, last_device = null → merged
+        │   (nulo: si la respuesta se pierde, el reintento del dispositivo vuelve a ser conflicto y da kept)
         └─ unión > 10 000 → sin escritura → too_long, note = fila actual
 ```
 

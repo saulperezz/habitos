@@ -1,46 +1,56 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { requireSession } from '@/lib/server/session';
-import { listNotes } from '@/features/notes/queries';
-import { addDays, formatDay, isValidDay, startOfWeek } from '@/lib/dates';
-import { NoteEditor } from './note-editor';
+import { listNotes, listNotesBefore } from '@/features/notes/queries';
+import { groupWeeks } from '@/features/notes/weeks';
+import { addDays, isValidDay, startOfWeek, type Day } from '@/lib/dates';
+import { CurrentWeek } from './current-week';
+import { PastWeek } from './past-week';
+import { PastWeeksList } from './past-weeks-list';
 
 export const metadata: Metadata = { title: 'Diario' };
 
-export default async function NotesPage({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
-  const { db, today } = await requireSession();
-  const { d } = await searchParams;
-  const focus = d && isValidDay(d) ? d : today;
-  const week = startOfWeek(focus);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(week, i));
-  const notes = await listNotes(db, days[0]!, days[6]!);
-  const byDay = new Map(notes.map((n) => [n.day, n]));
+type Search = { d?: string; w?: string; vista?: string };
 
+/**
+ * Diario semanal. La vista depende de la URL (contracts/diario-ui.md):
+ * `/notes` semana actual · `?vista=anteriores` lista · `?w=<día>` semana pasada · `?d=<día>` desde el calendario.
+ * Entrar desde la barra inferior (sin parámetros) abre siempre la semana actual (FR-032).
+ */
+export default async function NotesPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const { db, user, profile, today } = await requireSession();
+  const { d, w, vista } = await searchParams;
+  const currentMonday = startOfWeek(today);
+
+  if (vista === 'anteriores') {
+    const weeks = groupWeeks(await listNotesBefore(db, currentMonday));
+    return <PastWeeksList weeks={weeks} />;
+  }
+
+  let pastMonday: Day | null = null;
+  let focusDay: Day | undefined;
+  if (w && isValidDay(w)) {
+    const monday = startOfWeek(w);
+    if (monday < currentMonday) pastMonday = monday;
+  } else if (d && isValidDay(d) && d <= today) {
+    if (d < currentMonday) pastMonday = startOfWeek(d);
+    else focusDay = d;
+  }
+
+  if (pastMonday) {
+    const notes = await listNotes(db, pastMonday, addDays(pastMonday, 6));
+    return <PastWeek key={pastMonday} userId={user.id} monday={pastMonday} currentMonday={currentMonday} notes={notes} />;
+  }
+
+  const notes = await listNotes(db, currentMonday, today);
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href={`/notes?d=${addDays(week, -7)}`} className="btn-ghost size-11 px-0" aria-label="Semana anterior">‹</Link>
-        <div className="text-center">
-          <h1 className="text-xl font-bold">Diario</h1>
-          <p className="text-sm text-muted">
-            {formatDay(days[0]!, { day: 'numeric', month: 'short' })} – {formatDay(days[6]!, { day: 'numeric', month: 'short', year: 'numeric' })}
-          </p>
-        </div>
-        <Link href={`/notes?d=${addDays(week, 7)}`} className="btn-ghost size-11 px-0" aria-label="Semana siguiente">›</Link>
-      </div>
-      <ul className="space-y-3">
-        {days.map((day) => (
-          <li key={day}>
-            <NoteEditor
-              day={day}
-              label={formatDay(day, { weekday: 'long', day: 'numeric' })}
-              isToday={day === today}
-              initial={byDay.get(day)?.body ?? ''}
-              autoFocus={day === d}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <CurrentWeek
+      key={focusDay ?? 'actual'}
+      userId={user.id}
+      timezone={profile.timezone}
+      today={today}
+      monday={currentMonday}
+      notes={notes}
+      focusDay={focusDay}
+    />
   );
 }

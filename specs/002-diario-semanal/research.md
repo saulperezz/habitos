@@ -99,8 +99,10 @@ ninguna dependencia npm.
   `baseUpdatedAt` (ISO 8601 o `null`) y `deviceId` (UUID). Si se envía `baseUpdatedAt`, el
   guardado usa `save_note` con detección de conflictos (con `p_device = null` si falta
   `deviceId`); si no, se mantiene el comportamiento actual (último guardado gana, ahora con
-  `last_device = null`) para no romper clientes existentes. La respuesta sigue siendo
-  `{ data: Note | null }`; `too_long` responde 409 `conflict`.
+  `last_device = null`) para no romper clientes existentes. Sin `baseUpdatedAt` la respuesta sigue siendo
+  `{ data: Note | null }`; con `baseUpdatedAt` es `{ data: { outcome, note } }` (incluido
+  `too_long`, que significa que no se ha guardado nada), para que el envío `keepalive` del diario
+  muestre el aviso correcto.
 - **Justificación**: el cambio es compatible hacia atrás y la Server Action y la API llaman a la
   misma función de `features/notes/queries.ts` (principio I).
 
