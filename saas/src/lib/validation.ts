@@ -63,6 +63,12 @@ export const taskListQuery = z.object({
 
 export const noteUpsert = z.object({ body: z.string().max(10_000, 'Máximo 10.000 caracteres') });
 
+/** Guardado con detección de conflictos: versión de la nota que tenía el dispositivo y su id. */
+export const noteSave = noteUpsert.extend({
+  baseUpdatedAt: z.iso.datetime({ offset: true, message: 'Versión inválida' }).nullable().optional(),
+  deviceId: z.uuid('Dispositivo inválido').optional(),
+});
+
 export const profileUpdate = z
   .object({
     displayName: optionalText(60),

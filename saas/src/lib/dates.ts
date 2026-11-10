@@ -105,6 +105,12 @@ export function formatDay(day: Day, opts: Intl.DateTimeFormatOptions = { weekday
   return new Intl.DateTimeFormat('es-ES', { ...opts, timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
 }
 
+/** `dd/mm/aaaa`, como en la app original («SEMANA 09/11/2026»). */
+export function formatDayShort(day: Day): string {
+  const [y, m, d] = day.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 export function formatMonth(month: string): string {
   return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${month}-01T00:00:00Z`),

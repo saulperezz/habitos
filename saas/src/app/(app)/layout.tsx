@@ -6,7 +6,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   await requireSession();
   return (
     <div className="pt-safe">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-4 pt-4">
+      <header className="mx-auto flex h-[var(--cabecera-h)] max-w-xl items-center justify-between px-4 pt-4">
         <Link href="/today" className="text-sm font-bold tracking-widest text-accent uppercase">
           Habitos
         </Link>

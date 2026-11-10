@@ -185,3 +185,118 @@ describe('record_review_answer', () => {
     expect(r).toEqual({ logs: 1, answers: ['no', 'yes'] });
   });
 });
+
+describe('save_note', () => {
+  const DEV_X = '00000000-0000-4000-8000-0000000000d1';
+  const DEV_Y = '00000000-0000-4000-8000-0000000000d2';
+  const OLD = '2000-01-01T00:00:00+00:00';
+  const SEP = '\n\n— — —\n\n';
+  type Saved = { outcome: string; note: { body: string; updated_at: string; last_device: string | null } | null };
+
+  const save = (day: string, body: string, base: string | null, device: string | null) =>
+    as(ALICE, async () => {
+      const r = await db.query<{ r: Saved }>(
+        'select public.save_note($1::date, $2, $3::timestamptz, $4::uuid) as r', [day, body, base, device]);
+      return r.rows[0]!.r;
+    });
+  const row = (day: string) =>
+    as(ALICE, async () => {
+      const r = await db.query<{ body: string; last_device: string | null }>(
+        'select body, last_device from public.notes where day = $1', [day]);
+      return r.rows[0] ?? null;
+    });
+
+  it('inserta, actualiza y borra sin conflicto', async () => {
+    const a = await save('2026-10-01', 'Hola', null, DEV_X);
+    expect(a.outcome).toBe('saved');
+    expect(a.note).toMatchObject({ body: 'Hola', last_device: DEV_X });
+
+    const b = await save('2026-10-01', 'Hola mundo', a.note!.updated_at, DEV_Y);
+    expect(b.outcome).toBe('saved');
+    expect(await row('2026-10-01')).toEqual({ body: 'Hola mundo', last_device: DEV_Y });
+
+    const c = await save('2026-10-01', '  \n ', b.note!.updated_at, DEV_Y);
+    expect(c).toEqual({ outcome: 'deleted', note: null });
+    expect(await row('2026-10-01')).toBeNull();
+
+    expect(await save('2026-10-01', '', null, DEV_Y)).toEqual({ outcome: 'deleted', note: null });
+  });
+
+  it('el mismo dispositivo con base antigua no es conflicto', async () => {
+    await save('2026-10-02', 'uno', null, DEV_X);
+    const r = await save('2026-10-02', 'uno dos', OLD, DEV_X);
+    expect(r.outcome).toBe('saved');
+    expect((await row('2026-10-02'))!.body).toBe('uno dos');
+  });
+
+  it('une los textos si cambió en otro dispositivo', async () => {
+    await save('2026-10-03', 'B', null, DEV_Y);
+    const r = await save('2026-10-03', 'A', OLD, DEV_X);
+    expect(r.outcome).toBe('merged');
+    expect(await row('2026-10-03')).toEqual({ body: `B${SEP}A`, last_device: null });
+  });
+
+  it('un reintento de la misma unión no la sobrescribe ni la duplica', async () => {
+    // X une su texto, pero la respuesta se pierde y X reintenta con su versión antigua.
+    await save('2026-10-10', 'B', null, DEV_Y);
+    expect((await save('2026-10-10', 'A', OLD, DEV_X)).outcome).toBe('merged');
+    const retry = await save('2026-10-10', 'A', OLD, DEV_X);
+    expect(retry.outcome).toBe('kept');
+    expect((await row('2026-10-10'))!.body).toBe(`B${SEP}A`);
+    // Con la versión nueva, X sigue escribiendo con normalidad.
+    const next = await save('2026-10-10', `B${SEP}A y más`, retry.note!.updated_at, DEV_X);
+    expect(next.outcome).toBe('saved');
+  });
+
+  it('conserva la versión del servidor si el texto es vacío o idéntico', async () => {
+    await save('2026-10-04', 'B', null, DEV_Y);
+    expect((await save('2026-10-04', '', OLD, DEV_X)).outcome).toBe('kept');
+    expect((await save('2026-10-04', 'B', OLD, DEV_X)).outcome).toBe('kept');
+    expect(await row('2026-10-04')).toEqual({ body: 'B', last_device: DEV_Y });
+  });
+
+  it('no escribe si la unión supera 10 000 caracteres', async () => {
+    await save('2026-10-05', 'x'.repeat(6000), null, DEV_Y);
+    const r = await save('2026-10-05', 'y'.repeat(6000), OLD, DEV_X);
+    expect(r.outcome).toBe('too_long');
+    expect((await row('2026-10-05'))!.body).toBe('x'.repeat(6000));
+  });
+
+  it('sin dispositivo deja last_device nulo y siempre detecta conflicto', async () => {
+    const a = await save('2026-10-06', 'api', null, null);
+    expect(a.note!.last_device).toBeNull();
+    expect((await save('2026-10-06', 'otra api', OLD, null)).outcome).toBe('merged');
+  });
+
+  it('una escritura directa (saveNote) borra la marca de dispositivo', async () => {
+    await save('2026-10-07', 'de X', null, DEV_X);
+    await as(ALICE, () => db.query(
+      `insert into public.notes (day, body, last_device) values ('2026-10-07', 'externa', null)
+       on conflict (user_id, day) do update set body = excluded.body, last_device = null`));
+    expect(await row('2026-10-07')).toEqual({ body: 'externa', last_device: null });
+    const r = await save('2026-10-07', 'reintento de X', OLD, DEV_X);
+    expect(r.outcome).toBe('merged');
+  });
+
+  it('la importación borra la marca de dispositivo al sobrescribir', async () => {
+    await save('2026-10-08', 'de X', null, DEV_X);
+    const backup = { app: 'mis-habitos', datos: { habits: [], habitos_notas: { '2026-10-08': { texto: 'importada' } } } };
+    const imp = await as(ALICE, () => db.query<{ r: Record<string, number> }>(
+      'select public.import_legacy_backup($1::jsonb) as r', [JSON.stringify(backup)]));
+    expect(imp.rows[0]!.r).toEqual({ habits: 0, logs: 0, tasks: 0, notes: 1 });
+    expect(await row('2026-10-08')).toEqual({ body: 'importada', last_device: null });
+    expect((await save('2026-10-08', 'reintento de X', OLD, DEV_X)).outcome).toBe('merged');
+  });
+
+  it('respeta RLS y no la pueden ejecutar los anónimos', async () => {
+    await save('2026-10-09', 'privada', null, DEV_X);
+    const otherId = '00000000-0000-4000-8000-00000000000c';
+    await db.query(`insert into auth.users (id, email) values ($1, 'carol@example.com')`, [otherId]);
+    const r = await as(otherId, () => db.query<{ r: Saved }>(
+      `select public.save_note('2026-10-09', 'mía', null, null) as r`));
+    expect(r.rows[0]!.r.outcome).toBe('saved');
+    expect((await row('2026-10-09'))!.body).toBe('privada');
+    await expect(as(null, () => db.query(`select public.save_note('2026-10-09', 'x', null, null)`)))
+      .rejects.toThrow(/permission denied/);
+  });
+});

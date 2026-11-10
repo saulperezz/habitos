@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, currentStreak, isValidDay, monthGrid, reviewDayIn, startOfWeek, todayIn } from '@/lib/dates';
+import { addDays, currentStreak, formatDayShort, isValidDay, monthGrid, reviewDayIn, startOfWeek, todayIn } from '@/lib/dates';
 import { isOverdue } from '@/features/tasks/queries';
 
 describe('fechas del usuario', () => {
@@ -50,5 +50,18 @@ describe('tareas vencidas', () => {
     expect(isOverdue(t('2026-11-07', '11:00:00'), '2026-11-07', '10:00')).toBe(false);
     expect(isOverdue(t('2026-11-01', null, '2026-11-02T00:00:00Z'), '2026-11-07', '10:00')).toBe(false);
     expect(isOverdue(t(null), '2026-11-07', '10:00')).toBe(false);
+  });
+});
+
+describe('formato corto y semanas del diario', () => {
+  it('formatea dd/mm/aaaa', () => {
+    expect(formatDayShort('2026-11-09')).toBe('09/11/2026');
+    expect(formatDayShort('2026-01-01')).toBe('01/01/2026');
+  });
+
+  it('la semana de fin de año empieza en el lunes del año anterior', () => {
+    expect(startOfWeek('2026-01-01')).toBe('2025-12-29');
+    expect(startOfWeek('2026-01-04')).toBe('2025-12-29');
+    expect(startOfWeek('2026-01-05')).toBe('2026-01-05');
   });
 });

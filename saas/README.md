@@ -100,11 +100,11 @@ saas/
 | `habits` | `id` | `user_id`, `name` (1–40), `description` (≤120), `position`, `archived_at` | Máx. 100 por usuario. |
 | `habit_logs` | `(habit_id, day)` | `user_id`, `created_at` | FK compuesta `(habit_id, user_id)` → imposible marcar hábitos ajenos. |
 | `tasks` | `id` | `title` (1–80), `note` (≤200), `due_date`, `due_time`, `done_at` | `due_time` exige `due_date`. Índices parciales para pendientes y completadas. Máx. 10 000. |
-| `notes` | `(user_id, day)` | `body` (1–10 000) | Una nota por día (diario). Texto vacío = se borra. |
+| `notes` | `(user_id, day)` | `body` (1–10 000), `last_device` | Una nota por día (diario). Texto vacío = se borra. `last_device` = dispositivo de la última escritura sin conflicto (para no sobrescribir cambios de otro dispositivo). |
 | `review_sessions` | `(user_id, day)` | `answers` jsonb, `completed_at` | Estado del repaso para poder continuarlo. |
 | `push_subscriptions` | `id` | `endpoint`, `p256dh`, `auth` | Preparada para la fase 2 (avisos push). |
 
-RPC: `import_legacy_backup(payload)`, `record_review_answer(day, habit, answer)`, `delete_account()`.
+RPC: `import_legacy_backup(payload)`, `record_review_answer(day, habit, answer)`, `save_note(day, body, base, device)`, `delete_account()`.
 Borrar un usuario borra en cascada todos sus datos (RGPD).
 
 ## 4. API REST (`/api/v1`)
@@ -123,7 +123,7 @@ Respuestas `{ "data": … }`; errores `{ "error": { "code", "message" } }` con 4
 | `GET` | `/tasks?status=pending\|done&limit=50&cursor=…` | Pendientes ordenadas o completadas paginadas |
 | `POST` | `/tasks` | Crear `{ title, note?, dueDate?, dueTime? }` |
 | `PATCH` / `DELETE` | `/tasks/:id` | Editar o completar `{ done: true }` · borrar |
-| `GET` / `PUT` | `/notes/:day` | Leer / guardar `{ body }` (vacío borra) |
+| `GET` / `PUT` | `/notes/:day` | Leer / guardar `{ body, baseUpdatedAt?, deviceId? }` (vacío borra). Sin `baseUpdatedAt` gana el último guardado. Con `baseUpdatedAt` (el `updated_at` que tenía el cliente, o `null`) nunca se sobrescribe una nota cambiada en otro dispositivo: entonces responde `{ data: { outcome, note } }` con `outcome` = `saved` · `merged` (se unieron los textos) · `kept` (se conserva la del servidor) · `deleted` · `too_long` (no se guardó nada: la unión superaría 10 000 caracteres). |
 | `GET` / `POST` | `/review?day=…` · `/review` | Estado del repaso · responder `{ day, habitId, answer: yes\|no\|skip }` |
 | `POST` | `/import` | Importar la copia `mis-habitos-*.json` de la app original |
 | `GET` | `/api/health` | Comprobación de salud (sin auth) |
