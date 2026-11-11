@@ -27,6 +27,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Las copias de seguridad (hasta 4 MB) se importan con una Server Action.
+  experimental: { serverActions: { bodySizeLimit: '4mb' } },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

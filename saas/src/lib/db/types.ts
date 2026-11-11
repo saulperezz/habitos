@@ -16,6 +16,7 @@ export type Database = {
           timezone: string;
           review_time: string;
           review_enabled: boolean;
+          last_exported_at: string | null;
         } & Timestamps;
         Insert: {
           id: string;
@@ -29,6 +30,7 @@ export type Database = {
           timezone?: string;
           review_time?: string;
           review_enabled?: boolean;
+          last_exported_at?: string | null;
         };
         Relationships: [];
       };
@@ -126,6 +128,14 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      export_backup: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      mark_backup_exported: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
       import_legacy_backup: {
         Args: { payload: Json };
         Returns: Json;
