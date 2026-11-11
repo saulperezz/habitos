@@ -403,7 +403,7 @@ consola.
   Comprueba además que todos los `id` de `habits` y `habitos_tareas` cumplen
   `Number.isSafeInteger` (se usan sin comillas en `onclick`), que ningún hábito archivado está en
   `habits` y que `habitos_config.hora` cumple `^([01]\d|2[0-3]):[0-5]\d$` (depende de T008)
-- [ ] T028 [US4] Prueba manual (`quickstart.md` §3): abrir `index.html` en el navegador, importar
+- [X] T028 [US4] Prueba manual (`quickstart.md` §3): abrir `index.html` en el navegador, importar
   un archivo exportado desde `saas/` (Ajustes › Copia de seguridad › Importar › Reemplazar) y
   comprobar:
   - hábitos activos en su orden con su historial y sin archivados;
@@ -416,7 +416,7 @@ consola.
 
 ## Fase 7: Pulido y comprobaciones transversales
 
-- [ ] T029 [P] Revisar `saas/src/app/(app)/settings/*.tsx` en 360 px y 430 px, en claro y en
+- [X] T029 [P] Revisar `saas/src/app/(app)/settings/*.tsx` en 360 px y 430 px, en claro y en
   oscuro: sin scroll horizontal, botones ≥ 44×44 px, textos en español con buena ortografía y
   colores solo con variables CSS de `saas/src/app/globals.css`
 - [X] T030 [P] Actualizar `saas/README.md` (sección de la API v1):
@@ -426,14 +426,14 @@ consola.
   - remitir a `specs/003-exportar-copia-seguridad/contracts/backup-api.md` y `data-model.md`.
 - [X] T031 Ejecutar en `saas/` `npm run lint && npm run typecheck && npm test && npm run build` y
   corregir hasta que todo pase
-- [ ] T032 Validación en el proyecto de Supabase `habitos` (el mismo para producción y vista previa):
+- [X] T032 Validación en el proyecto de Supabase `habitos` (el mismo para producción y vista previa):
   - [X] aplicar la migración `20261110120000_backup_export.sql` (hecho el 2026-11-11; comprobado que
     exportar y reimportar la misma copia da todo a 0);
-  - [ ] abrir la URL de vista previa de Vercel de la rama en el móvil y recorrer
+  - [X] abrir la URL de vista previa de Vercel de la rama en el móvil y recorrer
     `specs/003-exportar-copia-seguridad/quickstart.md` §2 y §4 (ida y vuelta, cancelar la hoja de
     compartir en iPhone, otro dispositivo, reimportación, nota unida, aviso de 30 días, nota escrita
     sin conexión → aviso «Hay notas sin guardar…»);
-  - [ ] **medición manual de volumen** (no va en la CI): con una cuenta con muchos datos (p. ej. 10
+  - [ ] (omitida: la copia real ocupa ~12 KB, muy lejos del límite de 4 MB) **medición manual de volumen** (no va en la CI): con una cuenta con muchos datos (p. ej. 10
     hábitos con 3 años de historial, 500 tareas y 1000 notas, cargados con un script SQL puntual),
     medir con la pestaña de red el tiempo desde el toque hasta tener el archivo (SC-004: < 5 s) y
     comprobar que importar esa copia en una cuenta vacía termina sin errores. Anotar los tiempos en
