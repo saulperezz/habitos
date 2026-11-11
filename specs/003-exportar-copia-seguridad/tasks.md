@@ -438,7 +438,7 @@ consola.
     medir con la pestaña de red el tiempo desde el toque hasta tener el archivo (SC-004: < 5 s) y
     comprobar que importar esa copia en una cuenta vacía termina sin errores. Anotar los tiempos en
     el PR.
-- [ ] T033 Abrir el PR de `003-exportar-copia` a `master` con el resumen de cambios, la migración
+- [X] T033 Abrir el PR de `003-exportar-copia` a `master` con el resumen de cambios, la migración
   nueva, la nota sobre el cambio de comportamiento de la importación (las notas ahora se unen en
   lugar de sobrescribirse) y el resultado de `quickstart.md`
 
