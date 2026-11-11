@@ -90,6 +90,9 @@ export const reviewAnswer = z.object({
 });
 
 /** Copia `mis-habitos-*.json` de la app original. La validación fina la hace la RPC en SQL. */
+/** Tamaño máximo de una copia de seguridad que se puede importar. */
+export const BACKUP_MAX_BYTES = 4 * 1024 * 1024;
+
 export const legacyBackup = z.object({
   app: z.literal('mis-habitos', { error: 'Este archivo no es una copia de Mis Hábitos.' }),
   version: z.number().int().max(2, 'La copia es de una versión más nueva.'),
@@ -97,6 +100,9 @@ export const legacyBackup = z.object({
     habits: z.array(z.unknown()).max(500),
     habitos_tareas: z.array(z.unknown()).max(20_000).optional(),
     habitos_notas: z.record(z.string(), z.unknown()).optional(),
+    // Extras de saas/ que la app original ignora.
+    habitos_archivados: z.array(z.unknown()).max(500).optional(),
+    repasos: z.array(z.unknown()).max(5000).optional(),
   }).passthrough(),
 }).passthrough();
 

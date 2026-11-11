@@ -37,6 +37,11 @@ export function route<P = Record<string, never>>(handler: Handler<P>, opts: { li
       }
 
       const result = await handler({ db, userId: data.user.id, request }, await ctx.params);
+      // Respuestas ya construidas (p. ej. descargas de archivos): se devuelven sin envolver.
+      if (result instanceof Response) {
+        status = result.status;
+        return result;
+      }
       if (result === undefined) {
         status = 204;
         return new NextResponse(null, { status });
@@ -56,13 +61,17 @@ export function route<P = Record<string, never>>(handler: Handler<P>, opts: { li
   };
 }
 
-export async function readJson<T extends z.ZodType>(request: NextRequest, schema: T): Promise<z.infer<T>> {
+export async function readJson<T extends z.ZodType>(
+  request: NextRequest,
+  schema: T,
+  maxBytes: number = MAX_BODY_BYTES,
+): Promise<z.infer<T>> {
   const length = Number(request.headers.get('content-length') ?? 0);
-  if (length > MAX_BODY_BYTES) throw new AppError('payload_too_large', 'El cuerpo es demasiado grande.');
+  if (length > maxBytes) throw new AppError('payload_too_large', 'El cuerpo es demasiado grande.');
   let body: unknown;
   try {
     const text = await request.text();
-    if (text.length > MAX_BODY_BYTES) throw new AppError('payload_too_large', 'El cuerpo es demasiado grande.');
+    if (text.length > maxBytes) throw new AppError('payload_too_large', 'El cuerpo es demasiado grande.');
     body = JSON.parse(text);
   } catch (e) {
     if (e instanceof AppError) throw e;
