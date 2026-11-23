@@ -30,7 +30,17 @@ const nextConfig: NextConfig = {
   // Las copias de seguridad (hasta 4 MB) se importan con una Server Action.
   experimental: { serverActions: { bodySizeLimit: '4mb' } },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // El service worker de los avisos (spec 004) debe actualizarse siempre.
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+    ];
   },
 };
 

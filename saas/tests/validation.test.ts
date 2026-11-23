@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { habitCreate, legacyBackup, profileUpdate, rangeQuery, taskCreate } from '@/lib/validation';
+import { habitCreate, legacyBackup, profileUpdate, pushEndpoint, pushSubscription, rangeQuery, taskCreate } from '@/lib/validation';
 import { backupFileName, needsBackupReminder } from '@/features/profile/queries';
 
 describe('validación', () => {
@@ -57,5 +57,25 @@ describe('aviso de copia de seguridad', () => {
     expect(needsBackupReminder(ago(30 * DAY), true, now)).toBe(false);
     expect(needsBackupReminder(ago(30 * DAY + 1), true, now)).toBe(true);
     expect(needsBackupReminder(now.toISOString(), true, now)).toBe(false);
+  });
+});
+
+describe('validación de avisos push', () => {
+  const real = {
+    endpoint: 'https://fcm.googleapis.com/fcm/send/eXaMpLe:APA91b',
+    expirationTime: null,
+    keys: { p256dh: `B${'x'.repeat(86)}`, auth: 'y'.repeat(22) },
+  };
+
+  it('acepta un PushSubscription.toJSON() real y descarta expirationTime', () => {
+    expect(pushSubscription.parse(real)).toEqual({ endpoint: real.endpoint, keys: real.keys });
+  });
+
+  it('rechaza hosts no permitidos, http y claves mal formadas', () => {
+    expect(pushSubscription.safeParse({ ...real, endpoint: 'https://evil.com/x' }).success).toBe(false);
+    expect(pushSubscription.safeParse({ ...real, endpoint: 'http://fcm.googleapis.com/x' }).success).toBe(false);
+    expect(pushSubscription.safeParse({ ...real, keys: { ...real.keys, p256dh: 'corta' } }).success).toBe(false);
+    expect(pushSubscription.safeParse({ ...real, keys: { ...real.keys, auth: 'con espacios y más largo' } }).success).toBe(false);
+    expect(pushEndpoint.safeParse('https://web.push.apple.com/abc').success).toBe(true);
   });
 });

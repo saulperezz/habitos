@@ -23,15 +23,15 @@ no se ha aplicado en ningún entorno.
 
 ## Fase 1: Preparación
 
-- [ ] T001 Comprobar que la rama actual es `claude/mvp-architecture-build-hbua5y`, al día con
+- [X] T001 Comprobar que la rama actual es `claude/mvp-architecture-build-hbua5y`, al día con
   `origin/master`, y que en `saas/` pasa `npm run lint && npm run typecheck && npm test && npm run
   build` antes de tocar nada
-- [ ] T002 [P] Excluir el código Deno de la compilación de Next:
+- [X] T002 [P] Excluir el código Deno de la compilación de Next:
   - en `saas/tsconfig.json`, añadir `"supabase/functions/*/index.ts"` a `exclude`;
   - en `saas/eslint.config.mjs`, añadir `'supabase/functions/*/index.ts'` a `ignores`.
 
   Los módulos de `supabase/functions/_shared/` **no** se excluyen.
-- [ ] T003 [P] Configuración:
+- [X] T003 [P] Configuración:
   - en `saas/.env.example`, añadir `NEXT_PUBLIC_VAPID_PUBLIC_KEY=` con el comentario «Clave
     pública VAPID (base64url). La privada solo va en los secrets de Supabase.»;
   - en `saas/supabase/config.toml`, añadir `[functions.review-reminders]` con
@@ -44,7 +44,7 @@ no se ha aplicado en ningún entorno.
 **Propósito**: envío Web Push, validación, alta de dispositivos y service worker, compartidos por
 todas las historias.
 
-- [ ] T004 [P] Escribir `saas/tests/web-push.test.ts`, que debe fallar porque aún no existen los
+- [X] T004 [P] Escribir `saas/tests/web-push.test.ts`, que debe fallar porque aún no existen los
   módulos. Casos:
   - `isAllowedPushEndpoint` acepta `https://web.push.apple.com/x`,
     `https://fcm.googleapis.com/fcm/send/x`, `https://wns2-db5p.notify.windows.com/x` y
@@ -65,13 +65,13 @@ todas las historias.
   - `sendWebPush` con un `fetchFn` falso: método `POST` y cabeceras `Content-Encoding: aes128gcm`,
     `Content-Type: application/octet-stream`, `TTL`, `Urgency`, `Topic` y `Authorization`
     `vapid …`; devuelve el `status`.
-- [ ] T005 [P] Crear `saas/supabase/functions/_shared/reminders.ts`, sin imports, con:
+- [X] T005 [P] Crear `saas/supabase/functions/_shared/reminders.ts`, sin imports, con:
   - `PUSH_HOSTS`: `/(^|\.)push\.apple\.com$/`, `/^fcm\.googleapis\.com$/`,
     `/(^|\.)notify\.windows\.com$/`, `/^updates\.push\.services\.mozilla\.com$/`;
   - `isAllowedPushEndpoint(url)`: protocolo `https:` y `hostname` que encaje con `PUSH_HOSTS`;
     `false` si la URL no es válida;
   - `classifyPushStatus(status: number | null): 'sent' | 'gone' | 'retry'`.
-- [ ] T006 [P] Crear `saas/supabase/functions/_shared/web-push.ts`, sin imports y solo con
+- [X] T006 [P] Crear `saas/supabase/functions/_shared/web-push.ts`, sin imports y solo con
   `crypto.subtle`, según `contracts/push-api.md §6`:
   - `base64urlEncode` y `base64urlDecode`;
   - `vapidAuthorization(endpoint, { publicKey, privateKeyJwk, subject }, now = Date.now())`:
@@ -91,7 +91,7 @@ todas las historias.
     `isAllowedPushEndpoint` de `reminders.ts` antes de llamar (contrato §4 y §5).
 
   Las pruebas de T004 deben pasar.
-- [ ] T007 Escribir en `saas/tests/db.test.ts` un `describe('avisos push: registro')`, que debe
+- [X] T007 Escribir en `saas/tests/db.test.ts` un `describe('avisos push: registro')`, que debe
   fallar. Casos:
   - Alice registra un dispositivo válido con
     `select public.register_push_subscription($1,$2,$3)` y lo ve en `push_subscriptions`.
@@ -107,7 +107,7 @@ todas las historias.
 
   Para que sea determinista, actualizar `review_time` del perfil a `00:00` o `23:59` antes de
   registrar.
-- [ ] T008 Crear `saas/supabase/migrations/20261123000000_push_reminders.sql`, primera parte
+- [X] T008 Crear `saas/supabase/migrations/20261123000000_push_reminders.sql`, primera parte
   (`data-model.md`):
   1. `alter table public.profiles add column last_reminder_day date`.
   2. En `push_subscriptions`:
@@ -131,7 +131,7 @@ todas las historias.
   4. `revoke execute … from anon, public` y `grant execute … to authenticated`.
 
   Las pruebas de T007 deben pasar.
-- [ ] T009 [P] En `saas/src/lib/validation.ts`, añadir:
+- [X] T009 [P] En `saas/src/lib/validation.ts`, añadir:
   - `pushEndpoint`: `z.string().max(1024).refine(isAllowedPushEndpoint)`, importando
     `isAllowedPushEndpoint` desde `../../supabase/functions/_shared/reminders`;
   - `pushSubscription`: `z.object({ endpoint: pushEndpoint, keys: z.object({ p256dh:
@@ -141,14 +141,14 @@ todas las historias.
   En `saas/tests/validation.test.ts`, probar:
   - que acepta un `toJSON()` realista (con `expirationTime: null`);
   - que rechaza un host no permitido, `http:` y claves mal formadas.
-- [ ] T010 [P] En `saas/src/lib/db/types.ts`, añadir:
+- [X] T010 [P] En `saas/src/lib/db/types.ts`, añadir:
   - `last_reminder_day: string | null` a `profiles` (Row, Insert y Update opcional);
   - `updated_at: string` a `push_subscriptions` (Row; opcional en Insert y Update);
   - `register_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string };
     Returns: undefined }` en `Functions`.
 
   No añadir `claim_due_reminders` ni `report_reminder_results`.
-- [ ] T011 Crear `saas/src/features/push/queries.ts` (`import 'server-only'`) con:
+- [X] T011 Crear `saas/src/features/push/queries.ts` (`import 'server-only'`) con:
   - `listPushEndpoints(db)`: `select('endpoint')`, devuelve `string[]`;
   - `registerPush(db, sub)`: `check(await db.rpc('register_push_subscription', { p_endpoint,
     p_p256dh, p_auth }))`;
@@ -163,7 +163,7 @@ todas las historias.
   - `unregisterPushAction` valida con `pushEndpoint`.
 
   Ninguna hace `revalidatePath`: el componente actualiza su estado.
-- [ ] T012 [P] Crear `saas/public/sw.js` según `contracts/push-api.md §7`, en JavaScript plano sin
+- [X] T012 [P] Crear `saas/public/sw.js` según `contracts/push-api.md §7`, en JavaScript plano sin
   caché ni `fetch`:
   - `install` → `self.skipWaiting()` y `activate` → `event.waitUntil(self.clients.claim())`;
   - `push` → leer `event.data?.json()` en `try`; si `t === 'test'`: cuerpo «Los avisos funcionan

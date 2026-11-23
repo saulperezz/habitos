@@ -17,6 +17,7 @@ export type Database = {
           review_time: string;
           review_enabled: boolean;
           last_exported_at: string | null;
+          last_reminder_day: string | null;
         } & Timestamps;
         Insert: {
           id: string;
@@ -31,6 +32,7 @@ export type Database = {
           review_time?: string;
           review_enabled?: boolean;
           last_exported_at?: string | null;
+          last_reminder_day?: string | null;
         };
         Relationships: [];
       };
@@ -120,9 +122,9 @@ export type Database = {
         Relationships: [];
       };
       push_subscriptions: {
-        Row: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at: string };
-        Insert: { id?: string; user_id?: string; endpoint: string; p256dh: string; auth: string };
-        Update: { endpoint?: string; p256dh?: string; auth?: string };
+        Row: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id?: string; endpoint: string; p256dh: string; auth: string; updated_at?: string };
+        Update: { endpoint?: string; p256dh?: string; auth?: string; updated_at?: string };
         Relationships: [];
       };
     };
@@ -150,6 +152,10 @@ export type Database = {
       };
       delete_account: {
         Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      register_push_subscription: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string };
         Returns: undefined;
       };
       is_valid_timezone: {

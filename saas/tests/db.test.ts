@@ -654,3 +654,98 @@ describe('copia: ida y vuelta', () => {
     expect(await read()).toEqual([{ review_enabled: true, t: '07:15' }]);
   });
 });
+
+// ───────────────────────────── avisos push (spec 004) ─────────────────────────────
+
+const PUSH_A = '00000000-0000-4000-8000-0000000004a1'; // registra y luego cede su dispositivo
+const PUSH_B = '00000000-0000-4000-8000-0000000004b1'; // se queda el dispositivo de A
+const PUSH_C = '00000000-0000-4000-8000-0000000004c1'; // límite de 10 y borrado de cuenta
+const P256DH = `B${'A'.repeat(86)}`; // 65 bytes en base64url sin relleno
+const AUTH = 'A'.repeat(22); // 16 bytes en base64url sin relleno
+const endpoint = (n: string | number) => `https://fcm.googleapis.com/fcm/send/dispositivo-${n}`;
+
+const register = (uid: string, ep: string, p256dh = P256DH, auth = AUTH) =>
+  as(uid, () => db.query('select public.register_push_subscription($1, $2, $3)', [ep, p256dh, auth]));
+
+const pushRows = async (uid: string) =>
+  (await as(uid, () => db.query<{ endpoint: string; p256dh: string }>(
+    'select endpoint, p256dh from public.push_subscriptions order by endpoint'))).rows;
+
+const reminderDay = async (uid: string) =>
+  (await db.query<{ d: string | null }>(
+    `select to_char(last_reminder_day, 'YYYY-MM-DD') as d from public.profiles where id = $1`, [uid])).rows[0]!.d;
+
+describe('avisos push: registro', () => {
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, email) values ($1, 'pa@x'), ($2, 'pb@x'), ($3, 'pc@x')`,
+      [PUSH_A, PUSH_B, PUSH_C]);
+    // Hora futura por defecto para que registrar no marque el aviso de hoy (salvo en la prueba de D4).
+    await db.query(`update public.profiles set review_time = '23:59' where id = any($1)`, [[PUSH_A, PUSH_B, PUSH_C]]);
+  });
+
+  it('registra un dispositivo y al repetirlo actualiza las claves sin duplicar', async () => {
+    await register(PUSH_A, endpoint('a'));
+    expect(await pushRows(PUSH_A)).toEqual([{ endpoint: endpoint('a'), p256dh: P256DH }]);
+    const otherKey = `B${'Q'.repeat(86)}`;
+    await register(PUSH_A, endpoint('a'), otherKey);
+    expect(await pushRows(PUSH_A)).toEqual([{ endpoint: endpoint('a'), p256dh: otherKey }]);
+  });
+
+  it('el mismo dispositivo pasa a la última cuenta que lo activa (FR-006)', async () => {
+    await register(PUSH_B, endpoint('a'));
+    expect(await pushRows(PUSH_A)).toEqual([]);
+    expect((await pushRows(PUSH_B)).map((r) => r.endpoint)).toEqual([endpoint('a')]);
+  });
+
+  it('rechaza hosts no permitidos y claves mal formadas', async () => {
+    await expect(register(PUSH_A, 'https://evil.com/x')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, 'http://fcm.googleapis.com/x')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, endpoint('k'), 'no válida')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, endpoint('k'), P256DH, 'corta')).rejects.toThrow(/invalid_push_subscription/);
+    // Tampoco se cuelan escribiendo directamente en la tabla (restricciones en SQL).
+    await expect(as(PUSH_A, () => db.query(
+      `insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://evil.com/x', $1, $2)`,
+      [P256DH, AUTH]))).rejects.toThrow(/check constraint/);
+    expect(await pushRows(PUSH_A)).toEqual([]);
+  });
+
+  it('admite como mucho 10 dispositivos por cuenta (FR-007)', async () => {
+    for (let i = 0; i < 10; i++) await register(PUSH_C, endpoint(`c${i}`));
+    await expect(register(PUSH_C, endpoint('c10'))).rejects.toThrow(/limit_exceeded/);
+    // Volver a registrar uno que ya tiene no cuenta como nuevo.
+    await register(PUSH_C, endpoint('c3'));
+    expect(await pushRows(PUSH_C)).toHaveLength(10);
+  });
+
+  it('los anónimos no pueden registrar', async () => {
+    await expect(as(null, () => db.query('select public.register_push_subscription($1, $2, $3)',
+      [endpoint('anon'), P256DH, AUTH]))).rejects.toThrow(/permission denied/);
+  });
+
+  it('activar cuando ya pasó la hora de hoy deja el primer aviso para mañana (research D4)', async () => {
+    await db.query(`update public.profiles set review_time = '00:00', last_reminder_day = null where id = $1`, [PUSH_A]);
+    await register(PUSH_A, endpoint('d4'));
+    const today = (await db.query<{ d: string }>(
+      `select to_char((now() at time zone timezone)::date, 'YYYY-MM-DD') as d from public.profiles where id = $1`,
+      [PUSH_A])).rows[0]!.d;
+    expect(await reminderDay(PUSH_A)).toBe(today);
+
+    // Con la hora aún por llegar no se toca (se omite si quedan menos de 2 h para medianoche).
+    const late = (await db.query<{ late: boolean }>(
+      `select (now() at time zone timezone)::time >= '22:00' as late from public.profiles where id = $1`, [PUSH_B])).rows[0]!.late;
+    if (!late) {
+      await db.query(`update public.profiles
+        set review_time = ((now() at time zone timezone) + interval '2 hours')::time, last_reminder_day = null
+        where id = $1`, [PUSH_B]);
+      await register(PUSH_B, endpoint('d4-b'));
+      expect(await reminderDay(PUSH_B)).toBeNull();
+    }
+  });
+
+  it('borrar la cuenta borra sus dispositivos (FR-021)', async () => {
+    await as(PUSH_C, () => db.query('select public.delete_account()'));
+    const left = await db.query<{ c: number }>(
+      'select count(*)::int as c from public.push_subscriptions where user_id = $1', [PUSH_C]);
+    expect(left.rows[0]!.c).toBe(0);
+  });
+});

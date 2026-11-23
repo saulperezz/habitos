@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidDay, isValidTime, isValidTimeZone } from '@/lib/dates';
+import { isAllowedPushEndpoint } from '../../supabase/functions/_shared/reminders';
 
 const trimmed = (min: number, max: number, label: string) =>
   z.string().trim().min(min, `${label}: obligatorio`).max(max, `${label}: máximo ${max} caracteres`);
@@ -105,6 +106,22 @@ export const legacyBackup = z.object({
     repasos: z.array(z.unknown()).max(5000).optional(),
   }).passthrough(),
 }).passthrough();
+
+/** Avisos push (spec 004): solo https en servicios push conocidos (mismas reglas que en SQL). */
+export const pushEndpoint = z
+  .string()
+  .max(1024, 'Dispositivo no válido')
+  .refine(isAllowedPushEndpoint, 'Este dispositivo no es compatible con los avisos.');
+
+/** Forma de `PushSubscription.toJSON()`; `expirationTime` y cualquier otro campo se descartan. */
+export const pushSubscription = z.object({
+  endpoint: pushEndpoint,
+  keys: z.object({
+    p256dh: z.string().regex(/^[A-Za-z0-9_-]{86,88}$/, 'Clave de dispositivo no válida'),
+    auth: z.string().regex(/^[A-Za-z0-9_-]{21,24}$/, 'Clave de dispositivo no válida'),
+  }),
+});
+export type PushSubscriptionInput = z.infer<typeof pushSubscription>;
 
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? 'Datos inválidos';
