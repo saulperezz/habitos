@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useState, useTransition } from 'react';
-import { registerPushAction } from '@/features/push/actions';
+import { registerPushAction, sendTestPushAction, unregisterPushAction } from '@/features/push/actions';
 import { nowTimeIn } from '@/lib/dates';
 import {
   PUSH_FLAG,
+  PUSH_SYNC_FLAG,
+  currentSubscription,
   getServiceWorker,
   isIosNotInstalled,
   isPushSupported,
@@ -15,6 +17,7 @@ type State = 'checking' | 'unsupported-ios' | 'unsupported' | 'off' | 'on' | 'bl
 type Msg = { ok: boolean; text: string } | null;
 
 const NETWORK_ERROR = 'No se pudieron cambiar los avisos. Inténtalo de nuevo.';
+const GONE = 'Este dispositivo ya no tiene los avisos activados.';
 
 /** Ajustes › Avisos: estado de los avisos en ESTE dispositivo (contracts/push-api.md §8). */
 export function PushSettings(props: {
@@ -88,6 +91,49 @@ export function PushSettings(props: {
     });
   }
 
+  /** Solo este dispositivo deja de recibir avisos; los demás siguen igual (historia 3). */
+  function deactivate() {
+    setMsg(null);
+    start(async () => {
+      const sub = await currentSubscription().catch(() => null);
+      if (sub) {
+        const r = await unregisterPushAction(sub.endpoint).catch(() => null);
+        if (!r || !r.ok) {
+          setMsg({ ok: false, text: NETWORK_ERROR });
+          return;
+        }
+        await sub.unsubscribe().catch(() => undefined);
+      }
+      safeStorage.remove('localStorage', PUSH_FLAG);
+      safeStorage.remove('sessionStorage', PUSH_SYNC_FLAG);
+      setState('off');
+      setMsg({ ok: true, text: 'Avisos desactivados en este dispositivo.' });
+    });
+  }
+
+  function sendTest() {
+    setMsg(null);
+    start(async () => {
+      const sub = await currentSubscription().catch(() => null);
+      if (!sub) {
+        setState('off');
+        return;
+      }
+      const r = await sendTestPushAction(sub.endpoint).catch(() => null);
+      if (r?.ok) {
+        setMsg({ ok: true, text: 'Aviso de prueba enviado.' });
+        return;
+      }
+      const text = r ? r.error : 'No se pudo enviar el aviso de prueba. Inténtalo de nuevo.';
+      if (text === GONE) {
+        await sub.unsubscribe().catch(() => undefined);
+        safeStorage.remove('localStorage', PUSH_FLAG);
+        setState('off');
+      }
+      setMsg({ ok: false, text });
+    });
+  }
+
   return (
     <section className="card space-y-3" aria-labelledby="avisos-titulo">
       <p id="avisos-titulo" className="label">Avisos</p>
@@ -119,7 +165,19 @@ export function PushSettings(props: {
         </>
       )}
 
-      {state === 'on' && <p className="text-sm font-semibold">Avisos activados en este dispositivo ✓</p>}
+      {state === 'on' && (
+        <>
+          <p className="text-sm font-semibold">Avisos activados en este dispositivo ✓</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className="btn-primary" disabled={pending} onClick={sendTest}>
+              {pending ? 'Enviando…' : 'Enviar aviso de prueba'}
+            </button>
+            <button type="button" className="btn-ghost" disabled={pending} onClick={deactivate}>
+              Desactivar avisos
+            </button>
+          </div>
+        </>
+      )}
 
       {msg && (
         <p className={`text-sm ${msg.ok ? 'text-accent' : 'text-danger'}`} role={msg.ok ? 'status' : 'alert'}>

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requireSession } from '@/lib/server/session';
-import { signOutAction } from '@/features/profile/actions';
+import { SignOutButton } from '@/components/sign-out-button';
 import { hasAnyData, needsBackupReminder } from '@/features/profile/queries';
 import { BACKUP_MAX_BYTES } from '@/lib/validation';
 import { ProfileForm } from './profile-form';
@@ -27,9 +27,7 @@ export default async function SettingsPage() {
       <section className="card space-y-1">
         <p className="label">Cuenta</p>
         <p className="font-semibold break-all">{user.email}</p>
-        <form action={signOutAction}>
-          <button className="btn-ghost mt-2">Cerrar sesión</button>
-        </form>
+        <SignOutButton />
       </section>
 
       <ProfileForm timezone={profile.timezone} reviewTime={profile.review_time.slice(0, 5)} reviewEnabled={profile.review_enabled} />

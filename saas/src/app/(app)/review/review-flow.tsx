@@ -12,12 +12,15 @@ export function ReviewFlow({
   habits,
   answered,
   completed,
+  fromReminder = false,
 }: {
   day: string;
   dayLabel: string;
   habits: H[];
   answered: Record<string, 'yes' | 'no'>;
   completed: boolean;
+  /** Abierto desde el aviso push (spec 004): si ya está hecho, se dice en lugar de repetirlo. */
+  fromReminder?: boolean;
 }) {
   // Si se interrumpió, se continúa por los hábitos sin responder; si ya se completó, se repasan todos.
   const queue = useMemo(() => (completed ? habits : habits.filter((h) => !answered[h.id])), [habits, answered, completed]);
@@ -25,6 +28,7 @@ export function ReviewFlow({
   const [results, setResults] = useState<Record<string, Answer>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [showDone, setShowDone] = useState(fromReminder && completed);
 
   const current = queue[index];
   const finished = index >= queue.length;
@@ -48,6 +52,19 @@ export function ReviewFlow({
       <div className="card space-y-3 text-center">
         <p>Aún no tienes hábitos que repasar.</p>
         <Link href="/today" className="btn-primary">Crear un hábito</Link>
+      </div>
+    );
+  }
+
+  if (showDone) {
+    const yes = habits.filter((h) => answered[h.id] === 'yes').length;
+    return (
+      <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-5xl" aria-hidden>✅</p>
+        <h1 className="text-2xl font-bold">El repaso de hoy ya está hecho</h1>
+        <p className="text-muted">{yes} de {habits.length} cumplidos</p>
+        <Link href="/today" className="btn-primary">Volver</Link>
+        <button type="button" className="btn-ghost" onClick={() => setShowDone(false)}>Repetir repaso</button>
       </div>
     );
   }

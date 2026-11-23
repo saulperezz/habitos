@@ -351,10 +351,10 @@ aviso, y no llega si el repaso está hecho.
 
 **Prueba independiente**: `quickstart.md §3`, pasos 5 y 7.
 
-- [ ] T021 [US2] En `saas/src/app/(app)/review/page.tsx`:
+- [X] T021 [US2] En `saas/src/app/(app)/review/page.tsx`:
   - aceptar `searchParams: Promise<{ desde?: string }>`;
   - pasar `fromReminder={(await searchParams).desde === 'aviso'}` a `<ReviewFlow>`.
-- [ ] T022 [US2] En `saas/src/app/(app)/review/review-flow.tsx`, añadir la prop `fromReminder:
+- [X] T022 [US2] En `saas/src/app/(app)/review/review-flow.tsx`, añadir la prop `fromReminder:
   boolean`. Si `fromReminder && completed`:
   - mostrar el título «El repaso de hoy ya está hecho», el resumen «X de Y cumplidos» (contando
     `answered[h.id] === 'yes'`) y los botones «Volver» (`Link` a `/today`) y «Repetir repaso»;
@@ -373,7 +373,7 @@ aviso, y no llega si el repaso está hecho.
 
 **Prueba independiente**: `quickstart.md §3`, pasos 10 y 11.
 
-- [ ] T023 [US3] En `saas/src/app/(app)/settings/push-settings.tsx`, añadir «Desactivar avisos»
+- [X] T023 [US3] En `saas/src/app/(app)/settings/push-settings.tsx`, añadir «Desactivar avisos»
   en el estado `activados`:
   1. `unregisterPushAction(sub.endpoint)`;
   2. `sub.unsubscribe()`;
@@ -382,7 +382,7 @@ aviso, y no llega si el repaso está hecho.
 
   Si falla el paso 1: «No se pudieron cambiar los avisos. Inténtalo de nuevo.», sin tocar la
   suscripción local.
-- [ ] T024 [US3] Crear `saas/src/components/sign-out-button.tsx` (`'use client'`). Al pulsar:
+- [X] T024 [US3] Crear `saas/src/components/sign-out-button.tsx` (`'use client'`). Al pulsar:
   1. intentar, con un límite de 3 s y sin bloquear si falla, `getSubscription()` →
      `unregisterPushAction(endpoint)` → `unsubscribe()`;
   2. borrar las marcas `habitos-avisos` y `habitos-avisos-sync`;
@@ -402,7 +402,7 @@ deja de avisar a ese dispositivo.
 
 **Prueba independiente**: `quickstart.md §3`, pasos 2 y 3.
 
-- [ ] T025 [P] [US4] Crear `saas/supabase/functions/push-test/index.ts` (Deno) según
+- [X] T025 [P] [US4] Crear `saas/supabase/functions/push-test/index.ts` (Deno) según
   `contracts/push-api.md §5`:
   - solo `POST`; cuerpo de como mucho 2 048 bytes, que sea exactamente `{ endpoint: string }`
     (si no → `400`);
@@ -412,7 +412,7 @@ deja de avisar a ese dispositivo.
   - `sendWebPush` con `{"t":"test"}`, `TTL: 60`, `Urgency: 'high'` y `Topic: 'prueba'`;
   - `sent` → `200 {"result":"sent"}`; `gone` → `DELETE` de esa fila con el mismo token y `200
     {"result":"gone"}`; otro → `502 {"error":"push_failed"}`.
-- [ ] T026 [US4] En `saas/src/features/push/queries.ts`, añadir `sendTestPush(db, endpoint):
+- [X] T026 [US4] En `saas/src/features/push/queries.ts`, añadir `sendTestPush(db, endpoint):
   Promise<'sent' | 'gone'>`:
   - `access_token` de `(await db.auth.getSession()).data.session`;
   - `fetch(`${NEXT_PUBLIC_SUPABASE_URL}/functions/v1/push-test`, { method: 'POST', headers: {
@@ -426,7 +426,7 @@ deja de avisar a ese dispositivo.
   - `rateLimit(`push-test:${user.id}`, 5, 60)`; si no pasa → `AppError('rate_limited', 'Espera un
     momento antes de enviar otra prueba.')`;
   - validar con `pushEndpoint` y llamar a `sendTestPush`.
-- [ ] T027 [US4] En `saas/src/app/(app)/settings/push-settings.tsx`, añadir «Enviar aviso de
+- [X] T027 [US4] En `saas/src/app/(app)/settings/push-settings.tsx`, añadir «Enviar aviso de
   prueba» en el estado `activados`:
   - «Enviando…» mientras tanto;
   - `sent` → «Aviso de prueba enviado.»;

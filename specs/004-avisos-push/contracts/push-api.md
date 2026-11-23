@@ -125,6 +125,7 @@ Mensajes de resultado, en `role="status"`, o en `role="alert"` si son errores:
   «Avisos activados. El primero llegará mañana a las HH:MM.»
 - Al enviar la prueba: «Aviso de prueba enviado.» Si el dispositivo ya no existía: «Este
   dispositivo ya no tiene los avisos activados.», y el estado pasa a no-activados.
+- Al desactivar: «Avisos desactivados en este dispositivo.»
 - Error al activar o desactivar: «No se pudieron cambiar los avisos. Inténtalo de nuevo.»
 - Errores de las acciones: los de la sección 2.
 
