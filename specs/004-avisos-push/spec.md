@@ -154,6 +154,8 @@ llega solo a ese dispositivo.
 - **Envío con retraso**: si en el momento exacto no se pudo enviar (servicio caído, fallo
   temporal), se reintenta hasta conseguirlo, siempre que siga siendo el mismo día natural del
   usuario y el repaso siga sin completar; pasado ese día, ese aviso ya no se envía.
+- **Activar los avisos cuando ya pasó la hora de hoy**: el primer aviso llega mañana a la hora
+  configurada, no al momento; para comprobarlo en el acto está «Enviar aviso de prueba».
 - **Cambio de hora o zona después del aviso**: si ya se envió el aviso de hoy y el usuario cambia la
   hora a una posterior, no recibe un segundo aviso ese día.
 - **Cambio de horario de verano**: el aviso sigue llegando a la hora local configurada; el día que
