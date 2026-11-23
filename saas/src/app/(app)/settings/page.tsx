@@ -7,13 +7,18 @@ import { ProfileForm } from './profile-form';
 import { ExportBackup } from './export-backup';
 import { ImportBackup } from './import-backup';
 import { DeleteAccount } from './delete-account';
+import { PushSettings } from './push-settings';
+import { listPushEndpoints } from '@/features/push/queries';
 
 export const metadata: Metadata = { title: 'Ajustes' };
 
 export default async function SettingsPage() {
   const { db, user, profile } = await requireSession();
   // Solo se cuenta si hay datos cuando nunca se ha exportado, para no consultar de más.
-  const hasData = profile.last_exported_at === null ? await hasAnyData(db) : true;
+  const [hasData, endpoints] = await Promise.all([
+    profile.last_exported_at === null ? hasAnyData(db) : Promise.resolve(true),
+    listPushEndpoints(db),
+  ]);
   const showReminder = needsBackupReminder(profile.last_exported_at, hasData, new Date());
   return (
     <div className="space-y-6">
@@ -28,6 +33,13 @@ export default async function SettingsPage() {
       </section>
 
       <ProfileForm timezone={profile.timezone} reviewTime={profile.review_time.slice(0, 5)} reviewEnabled={profile.review_enabled} />
+      <PushSettings
+        endpoints={endpoints}
+        reviewTime={profile.review_time.slice(0, 5)}
+        reviewEnabled={profile.review_enabled}
+        timezone={profile.timezone}
+        vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
+      />
       <ExportBackup
         userId={user.id}
         maxBytes={BACKUP_MAX_BYTES}

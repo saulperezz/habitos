@@ -192,7 +192,7 @@ esté hecho.
 
 ### Pruebas de la historia 1
 
-- [ ] T013 [US1] Escribir en `saas/tests/db.test.ts` un `describe('avisos push: envío')`, que debe
+- [X] T013 [US1] Escribir en `saas/tests/db.test.ts` un `describe('avisos push: envío')`, que debe
   fallar. Preparación:
   - el usuario tiene un hábito activo, `timezone = 'Europe/Madrid'`, `review_time = '22:00'` y un
     dispositivo registrado;
@@ -222,7 +222,7 @@ esté hecho.
 
 ### Implementación de la historia 1
 
-- [ ] T014 [US1] Ampliar `saas/supabase/migrations/20261123000000_push_reminders.sql`:
+- [X] T014 [US1] Ampliar `saas/supabase/migrations/20261123000000_push_reminders.sql`:
   - `do $$ … if not exists (select from pg_roles where rolname = 'reminder_sender') then create
     role reminder_sender nologin noinherit; end if; … $$`;
   - `grant usage on schema public to reminder_sender`;
@@ -251,7 +251,7 @@ esté hecho.
     reminder_sender`.
 
   Las pruebas de T013 deben pasar.
-- [ ] T015 [US1] Ampliar la misma migración con el bloque de programación condicionado (research
+- [X] T015 [US1] Ampliar la misma migración con el bloque de programación condicionado (research
   D11, `data-model.md › Programación`):
   - si `pg_available_extensions` tiene `pg_cron` y `pg_net` → `create extension if not exists` de
     ambas;
@@ -266,7 +266,7 @@ esté hecho.
     idempotente.
 
   Comprobar que `tests/db.test.ts` sigue pasando (PGlite salta el bloque).
-- [ ] T016 [US1] Crear `saas/supabase/functions/review-reminders/index.ts` (Deno) según
+- [X] T016 [US1] Crear `saas/supabase/functions/review-reminders/index.ts` (Deno) según
   `contracts/push-api.md §4`:
   - `import postgres from 'npm:postgres@3.4.7'` y los módulos de `../_shared/*.ts`;
   - `Deno.serve`: solo `POST`; comparar `Authorization` con `Bearer ${REMINDERS_CRON_SECRET}` en
@@ -282,7 +282,7 @@ esté hecho.
     - `report_reminder_results(${JSON.stringify(results)}::jsonb)`;
     - `sql.end()` en `finally`;
   - `console.log` solo con contadores: `{ enviados, caducados, reintentos }`.
-- [ ] T017 [US1] Crear `saas/src/app/(app)/settings/push-settings.tsx` (`'use client'`). Props:
+- [X] T017 [US1] Crear `saas/src/app/(app)/settings/push-settings.tsx` (`'use client'`). Props:
   `{ endpoints: string[]; reviewTime: string; reviewEnabled: boolean; vapidPublicKey: string |
   null }`.
   - **Estado** (`contracts/push-api.md §8`), calculado en `useEffect`:
@@ -309,12 +309,12 @@ esté hecho.
   - Textos de `no-activados`, incluido el de repaso desactivado.
   - Botones `btn-primary`/`btn-ghost` de al menos 44 px; mensajes con `role="status"`, o
     `role="alert"` si son errores.
-- [ ] T018 [US1] En `saas/src/app/(app)/settings/page.tsx`:
+- [X] T018 [US1] En `saas/src/app/(app)/settings/page.tsx`:
   - obtener `listPushEndpoints(db)` (en `Promise.all` con lo que ya se consulta);
   - renderizar `<PushSettings endpoints reviewTime={profile.review_time.slice(0, 5)}
     reviewEnabled={profile.review_enabled} vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
     ?? null} />` justo después de `<ProfileForm>`, dentro de una tarjeta con `label` «Avisos».
-- [ ] T019 [US1] Crear `saas/src/components/push-sync.tsx` (`'use client'`, devuelve `null`) y
+- [X] T019 [US1] Crear `saas/src/components/push-sync.tsx` (`'use client'`, devuelve `null`) y
   montarlo en `saas/src/app/(app)/layout.tsx`. En `useEffect`, todo en `try/catch` y sin mostrar
   errores, actúa solo si:
   - `localStorage['habitos-avisos'] === '1'`;
@@ -330,7 +330,7 @@ esté hecho.
   4. marca `sessionStorage['habitos-avisos-sync'] = '1'`.
 
   Si el permiso pasó a `denied`, borra la marca local (FR-008).
-- [ ] T020 [P] [US1] En `saas/README.md`:
+- [X] T020 [P] [US1] En `saas/README.md`:
   - añadir la sección «Avisos push» con:
     - el esquema de funcionamiento (cron → `review-reminders` → servicios push);
     - un fragmento de Web Crypto para generar las claves VAPID (JWK privada + pública base64url),

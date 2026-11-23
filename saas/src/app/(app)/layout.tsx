@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
+import { PushSync } from '@/components/push-sync';
 import { requireSession } from '@/lib/server/session';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
       <main className="mx-auto max-w-xl px-4 pt-2 pb-28">{children}</main>
       <BottomNav />
+      <PushSync vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
     </div>
   );
 }
