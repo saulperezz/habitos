@@ -440,13 +440,15 @@ deja de avisar a ese dispositivo.
 
 ## Fase 7: Pulido y comprobaciones transversales
 
-- [ ] T028 Revisar que todos los textos nuevos están en español con tildes (Ajustes, `sw.js`,
+- [X] T028 Revisar que todos los textos nuevos están en español con tildes (Ajustes, `sw.js`,
   acciones y repaso), y que `contracts/push-api.md §8` coincide con lo implementado. Revisar
   también que en todos los componentes nuevos los botones miden al menos 44 px y tienen etiqueta,
-  el modo oscuro funciona y no hay desplazamiento horizontal a 360 y 430 px
-- [ ] T029 Pasar en `saas/` `npm run lint && npm run typecheck && npm test && npm run build`, y
+  el modo oscuro funciona y no hay desplazamiento horizontal a 360 y 430 px. *(Textos, etiquetas y
+  zona táctil (`btn` = `min-h-11`) revisados en el código; la comprobación visual en modo oscuro a
+  360/430 px requiere una sesión real y queda en T032, paso 14.)*
+- [X] T029 Pasar en `saas/` `npm run lint && npm run typecheck && npm test && npm run build`, y
   corregir lo que falle
-- [ ] T030 Revisar de nuevo la «Comprobación de Constitución» de `plan.md` con el código final.
+- [X] T030 Revisar de nuevo la «Comprobación de Constitución» de `plan.md` con el código final.
   Confirmar en concreto:
   - no se usa `SUPABASE_SERVICE_ROLE_KEY` ni `SUPABASE_DB_URL` en ningún archivo;
   - la carga solo es `{"t":…}`;
