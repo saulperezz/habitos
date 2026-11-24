@@ -28,7 +28,7 @@ GitHub Pages), que sigue funcionando igual.
  ┌──────────────────────────────── Supabase ────────────────────────────────┐
  │ Auth (correo+contraseña, enlace mágico; OAuth listo para activar)         │
  │ Postgres: RLS por usuario, restricciones, límites anti-abuso, RPC atómicas│
- │ Supavisor (pooling)  ·  réplicas de lectura  ·  pg_cron (fase 2: avisos)  │
+ │ Supavisor (pooling)  ·  réplicas de lectura  ·  pg_cron → avisos push  │
  └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,15 +96,16 @@ saas/
 
 | Tabla | Clave | Columnas | Notas |
 |---|---|---|---|
-| `profiles` | `id` → `auth.users` | `timezone`, `review_time`, `review_enabled`, `display_name`, `last_exported_at` | Se crea por trigger al registrarse, con la zona horaria del navegador. `last_exported_at` = última copia exportada (la pone `mark_backup_exported()` con `now()` de Postgres). |
+| `profiles` | `id` → `auth.users` | `timezone`, `review_time`, `review_enabled`, `display_name`, `last_exported_at`, `last_reminder_day` | Se crea por trigger al registrarse, con la zona horaria del navegador. `last_exported_at` = última copia exportada (la pone `mark_backup_exported()` con `now()` de Postgres). `last_reminder_day` = último día (zona del perfil) en que se envió el aviso del repaso: uno al día como máximo. |
 | `habits` | `id` | `user_id`, `name` (1–40), `description` (≤120), `position`, `archived_at` | Máx. 100 por usuario. |
 | `habit_logs` | `(habit_id, day)` | `user_id`, `created_at` | FK compuesta `(habit_id, user_id)` → imposible marcar hábitos ajenos. |
 | `tasks` | `id` | `title` (1–80), `note` (≤200), `due_date`, `due_time`, `done_at` | `due_time` exige `due_date`. Índices parciales para pendientes y completadas. Máx. 10 000. |
 | `notes` | `(user_id, day)` | `body` (1–10 000), `last_device` | Una nota por día (diario). Texto vacío = se borra. `last_device` = dispositivo de la última escritura sin conflicto (para no sobrescribir cambios de otro dispositivo). |
 | `review_sessions` | `(user_id, day)` | `answers` jsonb, `completed_at` | Estado del repaso para poder continuarlo. |
-| `push_subscriptions` | `id` | `endpoint`, `p256dh`, `auth` | Preparada para la fase 2 (avisos push). |
+| `push_subscriptions` | `id` | `endpoint` (único), `p256dh`, `auth`, `updated_at` | Un dispositivo con los avisos activados. Solo servicios push conocidos (Apple, Google, Microsoft, Mozilla) y claves base64url, comprobado en SQL. Máx. 10 por usuario. Un dispositivo pertenece a la última cuenta que lo activa. |
 
-RPC: `export_backup()`, `mark_backup_exported()`, `import_legacy_backup(payload)`, `record_review_answer(day, habit, answer)`, `save_note(day, body, base, device)`, `delete_account()`.
+RPC: `export_backup()`, `mark_backup_exported()`, `import_legacy_backup(payload)`, `record_review_answer(day, habit, answer)`, `save_note(day, body, base, device)`, `register_push_subscription(endpoint, p256dh, auth)`, `delete_account()`.
+Solo para el rol del cron de avisos (`reminder_sender`, sin acceso a tablas): `claim_due_reminders(limit, now)` y `report_reminder_results(results)`.
 Borrar un usuario borra en cascada todos sus datos (RGPD).
 
 ## 4. API REST (`/api/v1`)
@@ -190,6 +191,60 @@ npm run dev                 # http://localhost:3000
 Formato y reglas: `specs/003-exportar-copia-seguridad/data-model.md` y
 `specs/003-exportar-copia-seguridad/contracts/backup-api.md`.
 
+### Avisos push del repaso
+
+Cada usuario puede activar en *Ajustes › Avisos* un aviso del sistema que le recuerda el repaso a su
+hora, en todos los dispositivos donde lo active, salvo que ya lo haya hecho. Diseño completo en
+`specs/004-avisos-push/` (research D1–D14).
+
+```
+pg_cron (cada minuto) ──pg_net──▶ Edge Function review-reminders ──Web Push cifrado──▶ Apple/Google/…
+                                     │  rol reminder_sender (solo 2 funciones, sin tablas)
+                                     ▼
+                       claim_due_reminders() → enviar → report_reminder_results()
+Ajustes «Enviar aviso de prueba» ──Server Action──▶ Edge Function push-test (con la sesión del usuario)
+```
+
+Nunca se usa la clave *service role*. La carga solo es `{"t":"review"}` o `{"t":"test"}`; el texto lo
+pone `public/sw.js`.
+
+**Puesta en marcha** (una vez por proyecto):
+
+1. **Claves VAPID**: ejecuta en la consola del navegador y guarda las dos líneas (la privada es
+   secreta: nunca en el repositorio ni en Vercel):
+   ```js
+   (async () => {
+     const par = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+     const jwk = await crypto.subtle.exportKey('jwk', par.privateKey);
+     const crudo = new Uint8Array(await crypto.subtle.exportKey('raw', par.publicKey));
+     const publica = btoa(String.fromCharCode(...crudo)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+     console.log('VAPID_PUBLIC_KEY =', publica);
+     console.log('VAPID_PRIVATE_KEY =', JSON.stringify({ kty: jwk.kty, crv: jwk.crv, d: jwk.d, x: jwk.x, y: jwk.y }));
+   })();
+   ```
+2. **Migración**: `npx supabase db push` (activa `pg_cron` y `pg_net` y programa el trabajo
+   `review-reminders`).
+3. **Contraseña del rol** (*SQL Editor*): `alter role reminder_sender with login password '<larga y aleatoria>';`
+4. **Secrets y despliegue de las funciones**:
+   ```bash
+   npx supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY='{"kty":"EC",…}' \
+     VAPID_SUBJECT=mailto:<tu correo> REMINDERS_CRON_SECRET=<aleatorio> \
+     REMINDER_SENDER_DB_URL='postgresql://reminder_sender.<ref>:<contraseña>@<host del pooler>:6543/postgres'
+   npx supabase functions deploy review-reminders --no-verify-jwt
+   npx supabase functions deploy push-test
+   ```
+5. **Vault** (*SQL Editor*), para que el cron sepa a dónde llamar:
+   ```sql
+   select vault.create_secret('https://<ref>.supabase.co/functions/v1/review-reminders', 'reminders_function_url');
+   select vault.create_secret('<el mismo REMINDERS_CRON_SECRET>', 'reminders_cron_secret');
+   ```
+6. **Vercel**: variable `NEXT_PUBLIC_VAPID_PUBLIC_KEY` = la clave pública, y volver a desplegar.
+7. **Comprobar**: `curl -X POST https://<ref>.supabase.co/functions/v1/review-reminders` responde `401`
+   (y `202` con `-H "Authorization: Bearer <secreto>"`); `select * from cron.job_run_details order by
+   start_time desc limit 5;` muestra ejecuciones `succeeded`.
+
+En iPhone y iPad los avisos solo funcionan con la app añadida a la pantalla de inicio (iOS 16.4+).
+
 ## Calidad
 
 ```bash
@@ -202,7 +257,6 @@ ejecuta en cada cambio bajo `saas/`.
 
 ## Fase 2 (fuera del MVP)
 
-- Avisos push del repaso: `push_subscriptions` + `pg_cron` cada minuto → Edge Function que envía Web
-  Push (reutilizando la lógica VAPID de `notificaciones/worker.js`).
+- ~~Avisos push del repaso~~ ✓ hecho (spec 004, ver «Avisos push del repaso»).
 - Modo sin conexión con cola de sincronización (service worker + IndexedDB).
 - OAuth (Google/Apple), suscripciones de pago (Stripe), analítica de producto y Sentry.

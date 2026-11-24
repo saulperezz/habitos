@@ -37,6 +37,7 @@ export function fromDbError(err: { code?: string; message?: string } | null): Ap
   if (!err) return null;
   const msg = err.message ?? '';
   if (msg.includes('limit_exceeded')) return new AppError('limit_exceeded', 'Has alcanzado el máximo permitido.');
+  if (msg.includes('invalid_push_subscription')) return new AppError('bad_request', 'Este dispositivo no es compatible con los avisos.');
   if (msg.includes('invalid_backup')) return new AppError('bad_request', 'Este archivo no es una copia válida.');
   switch (err.code) {
     case '23505':
