@@ -150,7 +150,7 @@ formulario de tareas) y de T029 (detalle del día).
 - [X] T039 Revisar accesibilidad en `index.html`: todos los elementos interactivos nuevos son `<button>`/`<input>` con etiqueta accesible y zona táctil ≥44×44 px; las hojas se cierran con Escape en escritorio
 - [X] T040 Revisar en `index.html` el diseño a 360 px y 430 px: sin desplazamiento horizontal, zonas seguras respetadas en cabecera, barra de pestañas, repaso y hojas
 - [X] T041 Comprobar que no hay errores en consola con almacenamiento vacío y en navegación privada, y que la app es interactiva en <1 s (principio III / restricciones técnicas)
-- [ ] T042 Ejecutar los 10 pasos de `specs/001-recordatorio-habitos-tareas/quickstart.md` en escritorio (ancho móvil) y en un iPhone real; si el paso 6 falla por el *push* sin contenido, aplicar el plan B de research D3 en `notificaciones/worker.js` y `sw.js`
+- [X] T042 ~~Ejecutar los 10 pasos de `specs/001-recordatorio-habitos-tareas/quickstart.md` en escritorio (ancho móvil) y en un iPhone real; si el paso 6 falla por el *push* sin contenido, aplicar el plan B de research D3 en `notificaciones/worker.js` y `sw.js`~~ *(Descartada el 24-11-2026: la app de la raíz quedó congelada y el producto principal es `saas/`; los avisos en iPhone se probaron allí en la spec 004, T032.)*
 - [ ] T043 Publicar en GitHub Pages (`master` → `https://saulperezz.github.io/habitos/`) tras fusionar la rama, y fijar `URL_AVISOS` en `index.html` con la URL definitiva del worker
 
 ---
