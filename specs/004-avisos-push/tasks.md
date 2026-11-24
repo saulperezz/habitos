@@ -464,8 +464,8 @@ deja de avisar a ese dispositivo.
   sesión en otro), 12 (permiso bloqueado), 13 (desactivar «Repaso diario») y 14 (modo oscuro a
   360/430 px). Durante la prueba se vio que, sin la clave pública en el despliegue, Ajustes decía
   «Este navegador no permite avisos»: ahora muestra un estado propio (contracts/push-api.md §8).)*
-- [ ] T033 Abrir un PR de `claude/mvp-architecture-build-hbua5y` a `master` con el resumen de la
-  funcionalidad, los pasos manuales de despliegue y las excepciones de «Seguimiento de complejidad»
+- [X] T033 Abrir un PR de `claude/mvp-architecture-build-hbua5y` a `master` con el resumen de la
+  funcionalidad, los pasos manuales de despliegue y las excepciones de «Seguimiento de complejidad» *(PR #7)*
 
 ---
 
