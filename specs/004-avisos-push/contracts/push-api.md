@@ -115,6 +115,7 @@ al menos 44 px y tienen texto visible.
 | comprobando | «Comprobando avisos…» | — |
 | no-disponible (iPhone/iPad sin instalar) | «Para recibir avisos en iPhone, añade la app a la pantalla de inicio: Compartir › Añadir a pantalla de inicio.» | — |
 | no-disponible (otro) | «Este navegador no permite avisos.» | — |
+| sin-configurar (falta `NEXT_PUBLIC_VAPID_PUBLIC_KEY` en el despliegue) | «Los avisos todavía no están disponibles en esta versión de la app.» | — |
 | no-activados | «Recibe un aviso a las HH:MM si aún no has hecho el repaso.» (si el repaso está desactivado: «Los avisos solo llegan con el repaso diario activado.») | «Activar avisos» |
 | activados | «Avisos activados en este dispositivo ✓» | «Enviar aviso de prueba» · «Desactivar avisos» |
 | bloqueados | «Has bloqueado los avisos. Actívalos en los ajustes del navegador o del móvil.» | — |

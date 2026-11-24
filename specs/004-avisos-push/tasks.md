@@ -453,10 +453,17 @@ deja de avisar a ese dispositivo.
   - no se usa `SUPABASE_SERVICE_ROLE_KEY` ni `SUPABASE_DB_URL` en ningún archivo;
   - la carga solo es `{"t":…}`;
   - los logs de las funciones no incluyen endpoints ni identificadores.
-- [ ] T031 Puesta en marcha (`quickstart.md §2`, pasos 1–7) en el proyecto de Supabase y en
-  Vercel. **Manual**: requiere las credenciales del propietario
+- [X] T031 Puesta en marcha (`quickstart.md §2`, pasos 1–7) en el proyecto de Supabase y en
+  Vercel. **Manual**: requiere las credenciales del propietario *(Hecha el 23-11-2026: migración,
+  funciones `review-reminders` y `push-test`, secrets, Vault y `NEXT_PUBLIC_VAPID_PUBLIC_KEY` en
+  Vercel. El cron responde 202 y la función se conecta como `reminder_sender` sin errores.)*
 - [ ] T032 Pruebas a mano de `quickstart.md §3` (pasos 1–14) en la vista previa de Vercel, en
-  Android o escritorio y en un iPhone con la app instalada. **Manual**
+  Android o escritorio y en un iPhone con la app instalada. **Manual** *(23–24-11-2026: superados
+  1–9 en Edge/Windows y en iPhone con la app instalada (prueba, aviso diario, abrir el repaso desde
+  el aviso). Pendientes: 10 y 11 (aviso diario con dos dispositivos, desactivar en uno y cerrar
+  sesión en otro), 12 (permiso bloqueado), 13 (desactivar «Repaso diario») y 14 (modo oscuro a
+  360/430 px). Durante la prueba se vio que, sin la clave pública en el despliegue, Ajustes decía
+  «Este navegador no permite avisos»: ahora muestra un estado propio (contracts/push-api.md §8).)*
 - [ ] T033 Abrir un PR de `claude/mvp-architecture-build-hbua5y` a `master` con el resumen de la
   funcionalidad, los pasos manuales de despliegue y las excepciones de «Seguimiento de complejidad»
 

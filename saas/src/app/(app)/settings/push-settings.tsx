@@ -13,7 +13,7 @@ import {
   subscribe,
 } from '@/lib/push-client';
 
-type State = 'checking' | 'unsupported-ios' | 'unsupported' | 'off' | 'on' | 'blocked';
+type State = 'checking' | 'unconfigured' | 'unsupported-ios' | 'unsupported' | 'off' | 'on' | 'blocked';
 type Msg = { ok: boolean; text: string } | null;
 
 const NETWORK_ERROR = 'No se pudieron cambiar los avisos. Inténtalo de nuevo.';
@@ -36,7 +36,10 @@ export function PushSettings(props: {
     let cancelled = false;
     (async () => {
       let next: State;
-      if (!isPushSupported() || !vapidPublicKey) {
+      if (!vapidPublicKey) {
+        // Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY en el despliegue: no es culpa del navegador.
+        next = 'unconfigured';
+      } else if (!isPushSupported()) {
         next = isIosNotInstalled() ? 'unsupported-ios' : 'unsupported';
       } else if (Notification.permission === 'denied') {
         next = 'blocked';
@@ -145,6 +148,8 @@ export function PushSettings(props: {
           Para recibir avisos en iPhone, añade la app a la pantalla de inicio: Compartir › Añadir a pantalla de inicio.
         </p>
       )}
+
+      {state === 'unconfigured' && <p className="text-sm">Los avisos todavía no están disponibles en esta versión de la app.</p>}
 
       {state === 'unsupported' && <p className="text-sm">Este navegador no permite avisos.</p>}
 
