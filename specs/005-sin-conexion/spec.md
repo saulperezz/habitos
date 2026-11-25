@@ -356,8 +356,10 @@ cuenta: el cambio se envía.
 - El número de cambios pendientes cuenta cada acción del usuario aún no confirmada; si el usuario
   hace varias acciones sobre el mismo elemento, puede contarse cada una (no se exige agruparlas).
   En el diario cuenta un cambio por día con texto sin guardar.
-- «Gana el último cambio enviado» se aplica por elemento completo (hábito o tarea), no campo a
-  campo, salvo en el diario, que conserva la fusión de texto de la 002.
+- «Gana el último cambio enviado» se aplica campo a campo: cada cambio envía solo los campos que el
+  usuario modificó, así que los cambios de otro dispositivo en otros campos se conservan; si dos
+  dispositivos cambian el mismo campo, gana el último que llega al servidor. El diario conserva la
+  fusión de texto de la 002.
 - Marcar un hábito archivado en otro dispositivo se aplica (no está borrado); solo los elementos
   borrados descartan cambios.
 - Hoy sin conexión usa el día natural en la zona horaria del usuario, como con conexión
