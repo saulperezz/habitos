@@ -174,24 +174,29 @@ pendientes sí se aplican.
 ### Historia de usuario 6 - Los cambios pendientes son de mi cuenta (Prioridad: P2)
 
 Los cambios pendientes quedan ligados a la cuenta con la que se hicieron. Si el usuario intenta
-cerrar sesión con cambios sin enviar, se le avisa antes; y nunca se envían con otra cuenta.
+cerrar sesión con cambios sin enviar, se le avisa antes; y nunca se envían con otra cuenta. Sin
+conexión no se puede cerrar sesión: el botón aparece desactivado con «Necesita conexión».
 
 **Por qué esta prioridad**: protege la privacidad y evita mezclar datos entre cuentas en un
 dispositivo compartido (principio II de la constitución).
 
-**Prueba independiente**: sin conexión, marcar un hábito y cerrar sesión (aceptando el aviso);
-entrar con otra cuenta con conexión: no ve ni recibe el cambio. Volver a entrar con la primera
-cuenta: el cambio se envía.
+**Prueba independiente**: sin conexión, el botón «Cerrar sesión» aparece desactivado con «Necesita
+conexión». Con una conexión lenta y cambios aún sin enviar, pulsar «Cerrar sesión» y aceptar el
+aviso; entrar con otra cuenta: no ve ni recibe esos cambios. Volver a entrar con la primera
+cuenta: los cambios se envían.
 
 **Escenarios de aceptación**:
 
-1. **Dado** que hay cambios pendientes, **cuando** el usuario pulsa «Cerrar sesión», **entonces** se
+1. **Dado** que hay conexión y cambios pendientes, **cuando** el usuario pulsa «Cerrar sesión»,
+   **entonces** se
    le avisa de cuántos cambios hay sin enviar y puede cancelar o cerrar sesión igualmente.
 2. **Dado** que cierra sesión igualmente, **cuando** entra otra cuenta en ese dispositivo,
    **entonces** esa cuenta no ve los datos ni los cambios pendientes de la anterior, y estos nunca
    se envían con ella.
 3. **Dado** que vuelve a entrar la cuenta original en ese dispositivo, **cuando** hay conexión,
    **entonces** sus cambios pendientes se envían como en la historia 2.
+4. **Dado** que no hay conexión, **cuando** el usuario ve el botón «Cerrar sesión», **entonces**
+   aparece desactivado con el texto «Necesita conexión» y tocarlo no cierra la sesión.
 
 ---
 
@@ -218,7 +223,7 @@ cuenta: el cambio se envía.
   hábito sigue existiendo); solo se descartan los cambios sobre elementos borrados.
 - **Muchos cambios acumulados** (p. ej. una semana sin conexión): todos se conservan y se envían; el
   contador refleja el número real.
-- **Sin conexión, acciones fuera de alcance** (exportar, importar, ajustes): los botones aparecen
+- **Sin conexión, acciones fuera de alcance** (exportar, importar, ajustes, cerrar sesión): los botones aparecen
   desactivados con una explicación breve de que necesitan conexión.
 - **El dispositivo se queda sin espacio para guardar cambios**: se avisa al usuario de que el
   cambio no se ha podido guardar en el dispositivo; nunca se finge que se ha guardado.
@@ -299,8 +304,9 @@ cuenta: el cambio se envía.
 
 - **FR-026**: Los cambios pendientes y los datos guardados en el dispositivo DEBEN quedar ligados a
   la cuenta con la que se hicieron o cargaron, y solo enviarse o mostrarse con esa misma cuenta.
-- **FR-027**: Al pulsar «Cerrar sesión» con cambios pendientes, DEBE avisarse antes al usuario de
-  cuántos hay sin enviar, permitiéndole cancelar o cerrar sesión igualmente.
+- **FR-027**: Al pulsar «Cerrar sesión» con conexión y con cambios pendientes, DEBE avisarse antes
+  al usuario de cuántos hay sin enviar, permitiéndole cancelar o cerrar sesión igualmente. Sin
+  conexión, «Cerrar sesión» DEBE mostrarse desactivado con el texto «Necesita conexión».
 - **FR-028**: Cerrar sesión NO DEBE borrar los cambios pendientes de esa cuenta; DEBEN enviarse
   cuando vuelva a entrar esa misma cuenta en el dispositivo.
 - **FR-029**: Otra cuenta que entre en el mismo dispositivo NO DEBE ver los datos guardados ni los

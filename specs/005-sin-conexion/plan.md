@@ -89,7 +89,8 @@ Android y escritorio. Despliegue en Vercel.
 
 *Puerta: debe superarse antes de la fase 0 y revisarse después de la fase 1.* Se comprueba contra la
 constitución v3.1.0 (research D0: hoy solo está en la rama local `004-avisos-repaso`; respecto a la
-3.0.1 de `master` cambia solo el principio II, que aquí no se usa).
+3.0.1 de `master` cambia solo el principio II, que aquí no se usa). En esta rama
+(`005-sin-conexion`) está la v3.0.1; comprobada contra ella, el resultado es el mismo.
 
 | Principio | Estado | Cómo se cumple |
 |---|---|---|

@@ -86,9 +86,9 @@ que ya existe en la primera → `409`.
 | K | 5 | Borrar una tarea en B. Editarla sin conexión en A. Reconectar A | Aviso «La tarea “…” se borró en otro dispositivo…». El resto se aplica y el contador llega a 0 (SC-006) |
 | L | 5 | Con 99 hábitos en B, crear 2 sin conexión en A. Reconectar | Uno se crea. El otro se rechaza con el aviso del límite y desaparece de la lista |
 | M | 5 | Editar en A el título de una tarea y en B su nota, ambos sin conexión. Reconectar los dos | Se conservan **los dos** cambios (PATCH parcial) |
-| N | 6 | Sin conexión, marcar un hábito y pulsar «Cerrar sesión» | El diálogo dice «Tienes 1 cambio sin enviar…» y se puede cancelar |
-| O | 6 | Confirmar. Entrar con otra cuenta con conexión | No ve los datos ni el cambio de la primera (SC-007) |
-| P | 6 | Volver a entrar con la primera cuenta | El cambio pendiente se envía solo |
+| N | 6 | Abrir Ajustes con conexión y quitar la conexión con la página abierta | «Cerrar sesión» aparece desactivado con «Necesita conexión» y tocarlo no hace nada |
+| O | 6 | Sin conexión, hacer 10 cambios en Hoy. Poner Network en «Slow 3G», ir a Ajustes y, mientras se ve «Sincronizando…», pulsar «Cerrar sesión» | El diálogo dice «Tienes N cambios sin enviar…» y se puede cancelar. Confirmar y entrar con otra cuenta: no ve los datos ni los cambios de la primera (SC-007) |
+| P | 6 | Volver a entrar con la primera cuenta | Los cambios pendientes se envían solos |
 | Q | Casos límite | Con la app sin conexión pasada la medianoche (o cambiando la hora del sistema) | Hoy muestra el nuevo día sin marcar. Lo marcado ayer queda en ayer |
 | R | Casos límite | En iPhone como app de pantalla de inicio, repetir C, G y P 20 veces en total (SC-002) | El 100 % llega una sola vez |
 | S | Rendimiento | Con 50 cambios mezclados de hábitos, tareas y diario, reconectar | Todo sincronizado en menos de 30 s (SC-003) |

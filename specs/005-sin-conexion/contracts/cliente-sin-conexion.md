@@ -8,7 +8,7 @@
 |---|---|
 | Que no es `GET`, de otro origen, o `/api/*`, `/auth/*`, `/login` | No se intercepta |
 | `/_next/static/*` | Primero la caché (`habitos-estaticos-v1`) y después la red |
-| Navegación a `/today`, `/tasks`, `/notes` | Red primero (tiempo límite de 4 s) y guardado en `habitos-paginas-v1`. Si falla, la copia guardada. Si no hay copia, `/sin-conexion.html?motivo=primera-vez` |
+| Navegación a `/today`, `/tasks`, `/notes` | Red primero (tiempo límite de 4 s). Solo se guarda en `habitos-paginas-v1` una respuesta `ok`, sin redirección y de la misma ruta; una respuesta de red que no se guarda (redirección o `!ok`) se devuelve tal cual. La caché solo se usa si falla la red (error o tiempo agotado): la copia guardada o, si no hay copia, `/sin-conexion.html?motivo=primera-vez` |
 | Navegación a `/` | Red. Si falla, la copia de `/today` |
 | Otras navegaciones (`/review`, `/calendar`, `/settings`, …) | Red. Si falla, `/sin-conexion.html?motivo=seccion` |
 | RSC (`RSC: 1`) sin conexión | `Response.error()`, y Next hace una navegación completa |
@@ -63,13 +63,17 @@ conexión» al lado o debajo:
 - la pestaña Calendario de la barra inferior;
 - el botón de Ajustes de la cabecera;
 - dentro de Ajustes, si se pierde la conexión con la página abierta: «Exportar copia de seguridad»,
-  «Elegir archivo» (importar), guardar perfil, avisos y borrar cuenta;
+  «Elegir archivo» (importar), guardar perfil, avisos, borrar cuenta y «Cerrar sesión» (§6);
 - dentro del repaso, si se pierde la conexión con la página abierta: los botones de respuesta, con el
   texto «El repaso necesita conexión».
 
 ## 6. Cerrar sesión con pendientes
 
-Si hay pendientes (cola más días del diario), se muestra un `<dialog>` modal antes de hacer nada.
+Sin conexión, el botón «Cerrar sesión» está desactivado con «Necesita conexión» (§5), porque
+cerrar sesión necesita el servidor (la Server Action y la baja de avisos de la 004).
+
+Con conexión, si hay pendientes (cola más días del diario), se muestra un `<dialog>` modal antes
+de hacer nada.
 
 **Texto**:
 

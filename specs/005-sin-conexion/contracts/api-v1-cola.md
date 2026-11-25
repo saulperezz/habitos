@@ -91,6 +91,6 @@ Sin cambios (002). El diario no usa la cola nueva.
 |---|---|
 | `200`, `201`, `204` | Confirmado: se quita de la cola |
 | `404` (`update`, `log`, `delete`) | Se descarta y se avisa: «… se borró en otro dispositivo; tu cambio no se ha aplicado» |
-| `400`, `409`, `413`, `422` | Se descarta y se avisa con `error.message`. Si era un alta, se descartan también las operaciones posteriores sobre ese elemento, con un único aviso |
+| `400`, `409`, `413`, `422`, y `404` en un alta | Se descarta y se avisa con `error.message`. Si era un alta, se descartan también las operaciones posteriores sobre ese elemento, con un único aviso |
 | `401` | La cola se pone en pausa sin descartar nada, hasta que haya sesión |
 | `408`, `429`, `5xx`, error de red o tiempo agotado (15 s) | Se reintenta: espera creciente de 2 s a 60 s, respetando `Retry-After` |

@@ -55,6 +55,11 @@ la 005 no usa. Por eso la comprobación da el mismo resultado con cualquiera de 
 - **Reintentar Server Actions desde memoria.** No sobrevive al cierre de la app (FR-012).
 - **Enmendar la constitución.** El usuario pidió justificarlo en «Seguimiento de complejidad».
 
+**Pendiente de comprobar**: que una Server Action sin red lance un `TypeError` en Next 16 es una
+suposición. Se comprueba en la tarea T047 (DevTools › Network › Offline, llamar a una Server
+Action y ver qué error se recibe) y se anota aquí el error real. Si no es un `TypeError`,
+`lib/offline/client.ts` trata como fallo de red el error que se observe.
+
 ---
 
 ## D2. Altas idempotentes con id generado en el cliente
@@ -240,7 +245,7 @@ mueven operaciones del *mismo* elemento, y las demás solo eliminan.
 |---|---|
 | `2xx` | Se borra la operación |
 | `404` en `update`, `log` o `delete` | Se descarta. Aviso: «“X” se borró en otro dispositivo; tu cambio no se ha aplicado» |
-| `400`, `409`, `413` o `422` | Se descarta y se avisa con el `message` del servidor. Si era un `*.create`, también se descartan las operaciones posteriores sobre ese elemento, con un único aviso (FR-022) |
+| `400`, `409`, `413` o `422`, y `404` en un `*.create` | Se descarta y se avisa con el `message` del servidor. Si era un `*.create`, también se descartan las operaciones posteriores sobre ese elemento, con un único aviso (FR-022) |
 | `401` | Se para la cola: «Inicia sesión para enviar N cambios». Se reanuda en el siguiente disparador con sesión |
 | `408`, `429`, `5xx`, error de red o tiempo agotado | No se descarta. Se reintenta con espera creciente: 2 s, 4 s, 8 s… hasta 60 s, con ±20 % de azar. Si hay `Retry-After`, se respeta |
 
@@ -375,7 +380,10 @@ estático de `public/`, en español, con estilos en línea que siguen `prefers-c
   responde `401` (sesión caducada u otra cuenta), se para y no descarta nada (FR-026).
 - **Cerrar sesión** (`SignOutButton`). La 004 ya da de baja los avisos del dispositivo; ahora,
   además:
-  - Si hay pendientes (cola más días del diario), se muestra un diálogo de confirmación accesible
+  - Sin conexión, el botón aparece desactivado con «Necesita conexión», porque cerrar sesión
+    necesita el servidor (la Server Action y la baja de avisos de la 004).
+  - Con conexión, si hay pendientes (cola más días del diario), se muestra un diálogo de
+    confirmación accesible
     (`<dialog>` con botones reales): «Tienes N cambios sin enviar. Se enviarán cuando vuelvas a
     entrar con esta cuenta en este dispositivo.» Opciones: [Cancelar] [Cerrar sesión].
   - Al confirmar, se borran las `copias` de esa cuenta y la caché de páginas (`olvidar-paginas`).
