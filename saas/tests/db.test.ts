@@ -654,3 +654,231 @@ describe('copia: ida y vuelta', () => {
     expect(await read()).toEqual([{ review_enabled: true, t: '07:15' }]);
   });
 });
+
+// ───────────────────────────── avisos push (spec 004) ─────────────────────────────
+
+const PUSH_A = '00000000-0000-4000-8000-0000000004a1'; // registra y luego cede su dispositivo
+const PUSH_B = '00000000-0000-4000-8000-0000000004b1'; // se queda el dispositivo de A
+const PUSH_C = '00000000-0000-4000-8000-0000000004c1'; // límite de 10 y borrado de cuenta
+const P256DH = `B${'A'.repeat(86)}`; // 65 bytes en base64url sin relleno
+const AUTH = 'A'.repeat(22); // 16 bytes en base64url sin relleno
+const endpoint = (n: string | number) => `https://fcm.googleapis.com/fcm/send/dispositivo-${n}`;
+
+const register = (uid: string, ep: string, p256dh = P256DH, auth = AUTH) =>
+  as(uid, () => db.query('select public.register_push_subscription($1, $2, $3)', [ep, p256dh, auth]));
+
+const pushRows = async (uid: string) =>
+  (await as(uid, () => db.query<{ endpoint: string; p256dh: string }>(
+    'select endpoint, p256dh from public.push_subscriptions order by endpoint'))).rows;
+
+const reminderDay = async (uid: string) =>
+  (await db.query<{ d: string | null }>(
+    `select to_char(last_reminder_day, 'YYYY-MM-DD') as d from public.profiles where id = $1`, [uid])).rows[0]!.d;
+
+describe('avisos push: registro', () => {
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, email) values ($1, 'pa@x'), ($2, 'pb@x'), ($3, 'pc@x')`,
+      [PUSH_A, PUSH_B, PUSH_C]);
+    // Hora futura por defecto para que registrar no marque el aviso de hoy (salvo en la prueba de D4).
+    await db.query(`update public.profiles set review_time = '23:59' where id = any($1)`, [[PUSH_A, PUSH_B, PUSH_C]]);
+  });
+
+  it('registra un dispositivo y al repetirlo actualiza las claves sin duplicar', async () => {
+    await register(PUSH_A, endpoint('a'));
+    expect(await pushRows(PUSH_A)).toEqual([{ endpoint: endpoint('a'), p256dh: P256DH }]);
+    const otherKey = `B${'Q'.repeat(86)}`;
+    await register(PUSH_A, endpoint('a'), otherKey);
+    expect(await pushRows(PUSH_A)).toEqual([{ endpoint: endpoint('a'), p256dh: otherKey }]);
+  });
+
+  it('el mismo dispositivo pasa a la última cuenta que lo activa (FR-006)', async () => {
+    await register(PUSH_B, endpoint('a'));
+    expect(await pushRows(PUSH_A)).toEqual([]);
+    expect((await pushRows(PUSH_B)).map((r) => r.endpoint)).toEqual([endpoint('a')]);
+  });
+
+  it('rechaza hosts no permitidos y claves mal formadas', async () => {
+    await expect(register(PUSH_A, 'https://evil.com/x')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, 'http://fcm.googleapis.com/x')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, endpoint('k'), 'no válida')).rejects.toThrow(/invalid_push_subscription/);
+    await expect(register(PUSH_A, endpoint('k'), P256DH, 'corta')).rejects.toThrow(/invalid_push_subscription/);
+    // Tampoco se cuelan escribiendo directamente en la tabla (restricciones en SQL).
+    await expect(as(PUSH_A, () => db.query(
+      `insert into public.push_subscriptions (endpoint, p256dh, auth) values ('https://evil.com/x', $1, $2)`,
+      [P256DH, AUTH]))).rejects.toThrow(/check constraint/);
+    expect(await pushRows(PUSH_A)).toEqual([]);
+  });
+
+  it('admite como mucho 10 dispositivos por cuenta (FR-007)', async () => {
+    for (let i = 0; i < 10; i++) await register(PUSH_C, endpoint(`c${i}`));
+    await expect(register(PUSH_C, endpoint('c10'))).rejects.toThrow(/limit_exceeded/);
+    // Volver a registrar uno que ya tiene no cuenta como nuevo.
+    await register(PUSH_C, endpoint('c3'));
+    expect(await pushRows(PUSH_C)).toHaveLength(10);
+  });
+
+  it('los anónimos no pueden registrar', async () => {
+    await expect(as(null, () => db.query('select public.register_push_subscription($1, $2, $3)',
+      [endpoint('anon'), P256DH, AUTH]))).rejects.toThrow(/permission denied/);
+  });
+
+  it('activar cuando ya pasó la hora de hoy deja el primer aviso para mañana (research D4)', async () => {
+    await db.query(`update public.profiles set review_time = '00:00', last_reminder_day = null where id = $1`, [PUSH_A]);
+    await register(PUSH_A, endpoint('d4'));
+    const today = (await db.query<{ d: string }>(
+      `select to_char((now() at time zone timezone)::date, 'YYYY-MM-DD') as d from public.profiles where id = $1`,
+      [PUSH_A])).rows[0]!.d;
+    expect(await reminderDay(PUSH_A)).toBe(today);
+
+    // Con la hora aún por llegar no se toca (se omite si quedan menos de 2 h para medianoche).
+    const late = (await db.query<{ late: boolean }>(
+      `select (now() at time zone timezone)::time >= '22:00' as late from public.profiles where id = $1`, [PUSH_B])).rows[0]!.late;
+    if (!late) {
+      await db.query(`update public.profiles
+        set review_time = ((now() at time zone timezone) + interval '2 hours')::time, last_reminder_day = null
+        where id = $1`, [PUSH_B]);
+      await register(PUSH_B, endpoint('d4-b'));
+      expect(await reminderDay(PUSH_B)).toBeNull();
+    }
+  });
+
+  it('borrar la cuenta borra sus dispositivos (FR-021)', async () => {
+    await as(PUSH_C, () => db.query('select public.delete_account()'));
+    const left = await db.query<{ c: number }>(
+      'select count(*)::int as c from public.push_subscriptions where user_id = $1', [PUSH_C]);
+    expect(left.rows[0]!.c).toBe(0);
+  });
+});
+
+const SEND_U = '00000000-0000-4000-8000-0000000005a1'; // Europe/Madrid, repaso a las 22:00, 2 dispositivos
+const SEND_V = '00000000-0000-4000-8000-0000000005b1'; // tiene hábito pero ningún dispositivo
+
+type Claimed = { user_id: string; day: string; subscription_id: string; endpoint: string };
+
+async function asSender<T>(fn: () => Promise<T>): Promise<T> {
+  await db.exec('set role reminder_sender');
+  try {
+    return await fn();
+  } finally {
+    await db.exec('reset role');
+  }
+}
+
+/** Reclama como el cron en el instante `at` (UTC) y devuelve solo las filas de los usuarios de esta prueba. */
+const claim = async (at: string) =>
+  (await asSender(() => db.query<Claimed>(
+    `select user_id, to_char(day, 'YYYY-MM-DD') as day, subscription_id, endpoint
+     from public.claim_due_reminders(500, $1::timestamptz) order by endpoint`, [at])))
+    .rows.filter((r) => r.user_id === SEND_U || r.user_id === SEND_V);
+
+const report = (results: unknown) =>
+  asSender(() => db.query('select public.report_reminder_results($1::jsonb)', [JSON.stringify(results)]));
+
+const resetReminder = () => db.query('update public.profiles set last_reminder_day = null where id = $1', [SEND_U]);
+
+describe('avisos push: envío', () => {
+  // 24 nov 2026 en Madrid = UTC+1: las 22:00 locales son las 21:00Z.
+  const BEFORE = '2026-11-24T20:59:00Z';
+  const AT = '2026-11-24T21:00:00Z';
+  let habitId = '';
+
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values
+      ($1, 'su@x', '{"timezone":"Europe/Madrid"}'), ($2, 'sv@x', '{"timezone":"Europe/Madrid"}')`, [SEND_U, SEND_V]);
+    habitId = await as(SEND_U, async () =>
+      (await db.query<{ id: string }>(`insert into public.habits (name) values ('Leer') returning id`)).rows[0]!.id);
+    await as(SEND_V, () => db.query(`insert into public.habits (name) values ('Correr')`));
+    await db.query(`update public.profiles set review_time = '22:00' where id = any($1)`, [[SEND_U, SEND_V]]);
+    await register(SEND_U, endpoint('u1'));
+    await register(SEND_U, endpoint('u2'));
+    await resetReminder(); // por si registrar marcó el día real de hoy
+  });
+
+  it('avisa a todos los dispositivos al llegar la hora, una sola vez al día (FR-010, FR-012)', async () => {
+    expect(await claim(BEFORE)).toEqual([]);
+    const rows = await claim(AT);
+    expect(rows.map((r) => [r.user_id, r.day, r.endpoint])).toEqual([
+      [SEND_U, '2026-11-24', endpoint('u1')],
+      [SEND_U, '2026-11-24', endpoint('u2')],
+    ]);
+    expect(await reminderDay(SEND_U)).toBe('2026-11-24');
+    expect(await claim('2026-11-24T22:30:00Z')).toEqual([]);
+  });
+
+  it('no avisa si el repaso está hecho, desactivado o no hay hábitos activos', async () => {
+    await resetReminder();
+    await as(SEND_U, () => db.query(
+      `insert into public.review_sessions (day, completed_at) values ('2026-11-24', now())`));
+    expect(await claim(AT)).toEqual([]);
+    await db.query(`delete from public.review_sessions where user_id = $1`, [SEND_U]);
+
+    await db.query('update public.profiles set review_enabled = false where id = $1', [SEND_U]);
+    expect(await claim(AT)).toEqual([]);
+    await db.query('update public.profiles set review_enabled = true where id = $1', [SEND_U]);
+
+    await db.query('update public.habits set archived_at = now() where id = $1', [habitId]);
+    expect(await claim(AT)).toEqual([]);
+    await db.query('update public.habits set archived_at = null where id = $1', [habitId]);
+
+    // Un repaso empezado pero sin terminar no cuenta como hecho.
+    await as(SEND_U, () => db.query(`insert into public.review_sessions (day) values ('2026-11-24')`));
+    expect(await claim(AT)).toHaveLength(2);
+    await db.query(`delete from public.review_sessions where user_id = $1`, [SEND_U]);
+  });
+
+  it('aplica la regla de las 04:00 a la hora de madrugada', async () => {
+    await db.query(`update public.profiles set review_time = '02:00' where id = $1`, [SEND_U]);
+    const NIGHT = '2026-11-25T01:30:00Z'; // martes 25, 02:30 en Madrid → repaso del lunes 24
+    await resetReminder();
+    await as(SEND_U, () => db.query(
+      `insert into public.review_sessions (day, completed_at) values ('2026-11-24', now())`));
+    expect(await claim(NIGHT)).toEqual([]);
+    await db.query(`delete from public.review_sessions where user_id = $1`, [SEND_U]);
+    const rows = await claim(NIGHT);
+    expect(rows.map((r) => r.day)).toEqual(['2026-11-25', '2026-11-25']);
+  });
+
+  it('el día del cambio de hora avisa en cuanto la hora local la supera', async () => {
+    // 29 mar 2026: en Madrid se pasa de 02:00 a 03:00; las 02:30 no existen.
+    await db.query(`update public.profiles set review_time = '02:30', last_reminder_day = null where id = $1`, [SEND_U]);
+    expect(await claim('2026-03-29T00:59:00Z')).toEqual([]); // 01:59 locales
+    expect(await claim('2026-03-29T01:00:00Z')).toHaveLength(2); // 03:00 locales
+    await db.query(`update public.profiles set review_time = '22:00' where id = $1`, [SEND_U]);
+  });
+
+  it('report_reminder_results borra los caducados y libera los fallos temporales', async () => {
+    await resetReminder();
+    let rows = await claim(AT);
+    expect(rows).toHaveLength(2);
+    const [r1, r2] = rows as [Claimed, Claimed];
+    const item = (r: Claimed, outcome: string) => ({ subscription_id: r.subscription_id, user_id: r.user_id, day: r.day, outcome });
+
+    // Todo «retry» → se puede volver a reclamar el mismo día.
+    await report([item(r1, 'retry'), item(r2, 'retry')]);
+    rows = await claim(AT);
+    expect(rows).toHaveLength(2);
+
+    // Uno enviado y otro con fallo temporal → no se repite (evita duplicar en el que llegó).
+    await report([item(r1, 'sent'), item(r2, 'retry')]);
+    expect(await claim(AT)).toEqual([]);
+
+    // «gone» borra ese dispositivo; los elementos mal formados se ignoran sin error.
+    await report([item(r2, 'gone'), { subscription_id: 'no-uuid', outcome: 'gone' }, 42, null]);
+    expect((await pushRows(SEND_U)).map((r) => r.endpoint)).toEqual([endpoint('u1')]);
+    await report('no es un array');
+  });
+
+  it('el rol del cron no lee tablas y la app no puede usar sus funciones', async () => {
+    for (const table of ['habits', 'profiles', 'push_subscriptions', 'review_sessions']) {
+      await expect(asSender(() => db.query(`select * from public.${table}`))).rejects.toThrow(/permission denied/);
+    }
+    for (const uid of [SEND_U, null]) {
+      await expect(as(uid, () => db.query('select * from public.claim_due_reminders(500, now())')))
+        .rejects.toThrow(/permission denied/);
+      await expect(as(uid, () => db.query(`select public.report_reminder_results('[]'::jsonb)`)))
+        .rejects.toThrow(/permission denied/);
+    }
+    await expect(asSender(() => db.query('select public.register_push_subscription($1, $2, $3)',
+      [endpoint('x'), P256DH, AUTH]))).rejects.toThrow(/permission denied/);
+  });
+});

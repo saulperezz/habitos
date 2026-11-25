@@ -7,8 +7,8 @@ import { ReviewFlow } from './review-flow';
 
 export const metadata: Metadata = { title: 'Repaso' };
 
-export default async function ReviewPage() {
-  const { db, reviewDay } = await requireSession();
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ desde?: string }> }) {
+  const [{ db, reviewDay }, params] = await Promise.all([requireSession(), searchParams]);
   const [habits, review] = await Promise.all([listHabits(db, { from: reviewDay, to: reviewDay }), getReview(db, reviewDay)]);
   return (
     <ReviewFlow
@@ -17,6 +17,7 @@ export default async function ReviewPage() {
       habits={habits.map((h) => ({ id: h.id, name: h.name, description: h.description }))}
       answered={review.answers}
       completed={review.completed}
+      fromReminder={params.desde === 'aviso'}
     />
   );
 }

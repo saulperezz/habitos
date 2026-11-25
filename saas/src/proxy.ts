@@ -44,5 +44,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Las rutas /api gestionan su propia autenticación (cookie o Bearer).
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|.*\\.(?:png|svg|ico|webp)$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw\\.js|.*\\.(?:png|svg|ico|webp)$).*)'],
 };
